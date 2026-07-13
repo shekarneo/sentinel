@@ -9,3 +9,8 @@ embedding:
   provider: arcface
   model: embedding/arcface/w600k_r50.onnx
   input_size: 112
+
+search:
+  provider: faiss
+  index_path: indexes/gallery.index
+  metric: cosine

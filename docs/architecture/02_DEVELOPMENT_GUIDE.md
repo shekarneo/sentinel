@@ -131,9 +131,84 @@ Verification / Decision
 2.  Face Alignment — **complete** (frozen)
 3.  Face Assessment Engine — **complete** (frozen)
 4.  Pipeline Orchestrator — **complete**
-5.  Embedding Service — **architecture frozen**
-6.  Biometric Fraud Detection
-7.  Decision Engine
+5.  Embedding Service — **complete** (frozen)
+6.  Search Engine — **complete** (frozen)
+7.  Biometric Fraud Detection
+8.  Decision Engine
+
+**Search engine architecture**
+
+**Recognition**
+
+```
+Face (with EmbeddingData)
+  ↓
+FaceSearcher
+  ↓
+SearchIndex.search()
+  ↓
+RawSearchOutput
+  ↓
+IdentityRepository
+  ↓
+SearchResults
+  ↓
+PipelineContext.metadata["search_results"]
+```
+
+**Enrollment**
+
+```
+IdentityService
+  ↓
+IdentityRepository
+  ↓
+SearchIndex
+```
+
+| Component | Role |
+| --- | --- |
+| ``SearchIndex`` | Vector-only provider: ``load()``, ``add()``, ``remove()``, ``update()``, ``search()``, ``save()``, ``list_embedding_ids()``, ``rebuild()`` |
+| ``FaceSearcher`` | Probe validation, raw search, identity resolution, ``SearchResults`` assembly |
+| ``IdentityRepository`` | Identity mapping persistence and lookup; sole owner of identity metadata |
+| ``JsonIdentityRepository`` | JSON mapping file implementation |
+| ``IdentityService`` | Gallery lifecycle: ``initialize()``, enroll, update, delete, ``rebuild_gallery()``, load, save |
+| ``SearchResult`` | Identity resolved after raw search; ``SearchIndex`` never knows identities |
+| ``SearchResults`` | Per-face search output with timing and provider |
+| ``FaissSearchIndex`` | FAISS ``IndexFlatIP`` provider |
+
+**Metadata ownership**
+
+``SearchIndex`` must never store, return, or modify identity metadata.
+``IdentityRepository`` owns identity data and embedding-to-identity
+mappings. ``FaceSearcher`` resolves metadata only after
+``SearchIndex.search()`` returns ``RawSearchOutput``.
+
+**Dependency injection**
+
+Construct a shared repository and index with
+``create_search_engine_components()``, then inject both into
+``IdentityService(repository=..., search_index=...)`` and
+``FaceSearcher(repository=..., search_index=...)``.
+
+**Gallery lifecycle**
+
+| Method | Owner | Purpose |
+| --- | --- | --- |
+| ``IdentityService.initialize()`` | ``IdentityService`` | Load assets and validate mapping/index consistency |
+| ``SearchIndex.rebuild()`` | ``SearchIndex`` | Rebuild vector index from stored vectors |
+| ``IdentityService.rebuild_gallery()`` | ``IdentityService`` | Call ``SearchIndex.rebuild()`` only; never provider-specific APIs |
+
+``initialize()`` is explicit and not wired to application startup.
+Inconsistencies during validation raise ``ValueError`` without silent repair.
+
+Configuration is defined in ``configs/models.yaml`` under ``search``.
+FAISS is the first provider. Future providers (Milvus, Qdrant, pgvector)
+must implement ``SearchIndex`` without changing ``FaceSearcher``.
+
+Gallery enrollment belongs exclusively to ``IdentityService``.
+``FaceSearcher`` performs recognition only. ``SearchIndex`` stores vectors
+only and returns raw ``embedding_id`` matches.
 
 **Embedding engine architecture**
 

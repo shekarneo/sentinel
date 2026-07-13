@@ -4,3 +4,4 @@ onnxruntime==1.23.2
 pydantic==2.13.4
 PyYAML==6.0.3
 scikit-image==0.25.2
+faiss-cpu==1.14.3

@@ -594,6 +594,129 @@ are responsible for normalization before returning ``EmbeddingData``.
 
 **Status:** Architecture frozen. ArcFace provider complete.
 
+### Search Engine
+
+**Purpose**
+
+Query a gallery of enrolled identity embeddings and return ranked match
+candidates for each probe face. Search operates on unit-normalized vectors
+produced by the Embedding Engine; probe vectors must not be re-normalized.
+
+**Architecture**
+
+**Recognition**
+
+```
+Face (with EmbeddingData)
+  ↓
+FaceSearcher
+  ↓
+SearchIndex.search()
+  ↓
+RawSearchOutput
+  ↓
+IdentityRepository
+  ↓
+SearchResults
+  ↓
+PipelineContext.metadata["search_results"]
+```
+
+**Enrollment**
+
+```
+IdentityService
+  ↓
+IdentityRepository
+  ↓
+SearchIndex
+```
+
+**Module layout**
+
+| Component | Responsibility |
+| --- | --- |
+| ``SearchIndex`` | Vector-only provider: ``load()``, ``add()``, ``remove()``, ``update()``, ``search()``, ``save()``, ``list_embedding_ids()``, ``rebuild()`` |
+| ``FaceSearcher`` | Probe validation, raw search, identity resolution, ``SearchResults`` assembly |
+| ``IdentityRepository`` | Identity mapping persistence and lookup; sole owner of identity metadata |
+| ``JsonIdentityRepository`` | JSON mapping file implementation |
+| ``IdentityService`` | Gallery lifecycle owner: ``initialize()``, enroll, update, delete, ``rebuild_gallery()``, load, save |
+| ``SearchResult`` | Identity resolved by ``IdentityRepository`` after raw search |
+| ``SearchResults`` | Per-face search output with timing and provider metadata |
+| ``FaissSearchIndex`` | FAISS ``IndexFlatIP`` provider |
+
+**Responsibility ownership**
+
+| Concern | Owner |
+| --- | --- |
+| Vector storage and nearest-neighbor search | ``SearchIndex`` |
+| Identity mapping persistence | ``IdentityRepository`` |
+| Gallery enroll / update / delete / rebuild | ``IdentityService`` |
+| Probe search and ``SearchResult`` assembly | ``FaceSearcher`` |
+| Identity metadata | ``IdentityRepository`` (not ``SearchIndex``) |
+
+**Metadata ownership rule**
+
+``SearchIndex`` must never store, return, or modify identity metadata. It
+manages embedding identifiers, vectors, and raw distances only.
+``IdentityRepository`` is the sole owner of identity metadata and
+embedding-to-identity mappings. ``FaceSearcher`` resolves metadata only
+after receiving ``RawSearchOutput`` from ``SearchIndex``.
+
+**Dependency injection**
+
+``IdentityService`` and ``FaceSearcher`` accept the same ``repository`` and
+``search_index`` instances through constructor injection. Use
+``create_search_engine_components()`` to construct a shared pair without
+introducing a DI framework.
+
+**Gallery lifecycle**
+
+| Method | Owner | Purpose |
+| --- | --- | --- |
+| ``IdentityService.initialize()`` | ``IdentityService`` | Load repository and index, validate gallery consistency |
+| ``SearchIndex.rebuild()`` | ``SearchIndex`` | Rebuild vector index from stored vectors (provider-specific) |
+| ``IdentityService.rebuild_gallery()`` | ``IdentityService`` | Orchestrate gallery rebuild via ``SearchIndex.rebuild()`` only |
+
+``initialize()`` is an explicit lifecycle hook. It is not invoked
+automatically at startup. Callers must invoke it when production gallery
+readiness should be verified. During ``initialize()``, missing mapping or
+index files and mapping/index synchronization mismatches raise
+``ValueError``; the service does not silently repair inconsistencies.
+
+**Configuration**
+
+Search provider settings live in ``configs/models.yaml`` under ``search``:
+
+| Key | Purpose |
+| --- | --- |
+| ``provider`` | Active provider (``faiss`` first) |
+| ``index_path`` | Relative path to the gallery index file |
+| ``metric`` | Similarity metric (``cosine`` for unit-normalized vectors) |
+
+Future providers (Milvus, Qdrant, pgvector) must implement ``SearchIndex``
+without changing ``FaceSearcher``.
+
+**Consumes**
+
+`list[Face]` where ``Face.embedding`` is populated with a unit-normalized vector
+
+**Produces**
+
+``list[SearchResults]`` stored in ``PipelineContext.metadata["search_results"]``.
+Search results are not attached to ``Face``.
+
+| Field | Purpose |
+| --- | --- |
+| ``SearchResult.identity_id`` | Identity resolved by ``IdentityRepository`` after raw search |
+| ``SearchResult.score`` | Similarity score for the match |
+| ``SearchResult.rank`` | Rank within the result set (1-based) |
+| ``SearchResult.metadata`` | Optional gallery metadata |
+| ``SearchResults.search_time_ms`` | Query latency |
+| ``SearchResults.provider`` | Active search provider name |
+
+**Status:** Architecture frozen. FAISS provider complete.
+
 ### Decision Engine
 
 **Purpose**

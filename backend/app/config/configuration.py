@@ -143,9 +143,16 @@ class EmbeddingModelSettings(BaseModel):
     input_size: int
 
 
+class SearchModelSettings(BaseModel):
+    provider: str
+    index_path: str
+    metric: str
+
+
 class ModelSettings(BaseModel):
     detection: DetectionModelSettings = DetectionModelSettings()
     embedding: EmbeddingModelSettings
+    search: SearchModelSettings
 
 
 class PipelineProfileSettings(BaseModel):
@@ -236,3 +243,19 @@ def resolve_embedding_model_path(
         / settings.paths.models_dir
         / model_settings.embedding.model
     )
+
+
+def resolve_search_index_path(
+    settings: Settings | None = None,
+    model_settings: ModelSettings | None = None,
+) -> Path:
+    """Resolve the search index path from configuration."""
+    configuration = Configuration()
+
+    if settings is None:
+        settings = configuration.load()
+
+    if model_settings is None:
+        model_settings = configuration.load_models()
+
+    return PROJECT_ROOT / model_settings.search.index_path

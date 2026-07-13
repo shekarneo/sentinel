@@ -15,6 +15,7 @@ from backend.ai.alignment.aligner import FaceAligner
 from backend.ai.assessment.assessor import FaceAssessor
 from backend.ai.detection.scrfd.detector import SCRFDDetector
 from backend.ai.embedding.embedder import FaceEmbedder
+from backend.ai.search.searcher import FaceSearcher
 from backend.app.config.configuration import resolve_scrfd_model_path
 from backend.app.pipeline.context import PipelineContext
 from backend.app.pipeline.metadata import StageMetadata
@@ -184,7 +185,7 @@ class EmbeddingStage(PipelineStage):
 
 
 class SearchStage(PipelineStage):
-    """Placeholder for the search and matching module."""
+    """Adapter for the search engine module."""
 
     metadata = StageMetadata(
         name="search",
@@ -197,9 +198,21 @@ class SearchStage(PipelineStage):
         supports_batching=False,
     )
 
+    def __init__(self, searcher: FaceSearcher | None = None) -> None:
+        """Initialize the search stage.
+
+        Args:
+            searcher: Optional pre-initialized face searcher.
+        """
+        self._searcher = searcher or FaceSearcher()
+
     def execute(self, context: PipelineContext) -> PipelineContext:
-        logger.info("Search stage is not yet implemented; skipping.")
-        _stage_results(context)[self.metadata.name] = {"status": "not_implemented"}
+        search_results = self._searcher.search(context.faces)
+        context.metadata["search_results"] = search_results
+        logger.debug(
+            "Searched %d face(s); stored results in metadata.",
+            len(search_results),
+        )
         return context
 
 
