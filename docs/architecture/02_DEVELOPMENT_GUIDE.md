@@ -130,9 +130,46 @@ Verification / Decision
 1.  Face Detection — **complete** (SCRFD, frozen)
 2.  Face Alignment — **complete** (frozen)
 3.  Face Assessment Engine — **complete** (frozen)
-4.  Biometric Fraud Detection
-5.  Embedding Service
-6.  Decision Engine
+4.  Pipeline Orchestrator — **complete**
+5.  Biometric Fraud Detection
+6.  Embedding Service
+7.  Decision Engine
+
+**Pipeline orchestrator**
+
+AI modules never invoke one another directly. The pipeline layer in
+``backend/app/pipeline/`` owns execution order and use-case selection.
+
+| Component | Role |
+| --- | --- |
+| ``PipelineContext`` | Frozen API: image, faces, profile, metadata, timings, errors |
+| ``PipelineProfile`` | Selects a built-in use case or ``CUSTOM`` stage list |
+| ``PipelineStage`` | Adapter interface exposing static ``StageMetadata`` |
+| ``StageMetadata`` | Self-describing requires/provides contract for each stage |
+| ``PipelineRegistry`` | Stores stage classes or factories; exposes metadata without instantiation |
+| ``PipelineBuilder`` | Loads ``configs/pipeline_profiles.yaml`` and resolves stages |
+| ``PipelineExecutor`` | Runs stages sequentially with timing and graceful failure |
+
+Pipeline profiles are configuration-driven. The builder contains no
+profile-specific business logic. Runtime-specific outputs belong in
+``context.metadata`` (for example ``metadata['results']``). New AI modules
+should register a stage factory without changing ``PipelineBuilder``.
+
+Stages are self-describing through ``StageMetadata``. The registry exposes
+metadata without instantiating stages. The builder may use this metadata
+for future validation and dependency checking.
+
+Built-in profiles (from ``configs/pipeline_profiles.yaml``):
+
+| Profile | Stages |
+| --- | --- |
+| ``ENROLLMENT`` | scrfd, alignment, assessment, fraud, embedding |
+| ``ATTENDANCE`` | scrfd, alignment, fraud, embedding, search |
+| ``SURVEILLANCE`` | scrfd, alignment, embedding, search |
+| ``KYC`` | scrfd, alignment, assessment, fraud, embedding, verification |
+| ``ACCESS_CONTROL`` | scrfd, alignment, fraud, embedding, verification |
+| ``SEARCH`` | scrfd, alignment, embedding, search |
+| ``CUSTOM`` | User-defined stage list |
 
 **Face Assessment architecture**
 

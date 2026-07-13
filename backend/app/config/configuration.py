@@ -12,6 +12,7 @@ from pydantic import BaseModel, model_validator
 
 from backend.app.core.constants import (
     DEFAULT_MODELS_FILE,
+    DEFAULT_PIPELINE_PROFILES_FILE,
     DEFAULT_SETTINGS_FILE,
     DEFAULT_THRESHOLDS_FILE,
     PROJECT_ROOT,
@@ -140,6 +141,12 @@ class ModelSettings(BaseModel):
     detection: DetectionModelSettings = DetectionModelSettings()
 
 
+class PipelineProfileSettings(BaseModel):
+    """Pipeline profile stage sequences loaded from YAML."""
+
+    profiles: dict[str, list[str]]
+
+
 # -------------------------------------------------------------------------
 # Configuration Loader
 # -------------------------------------------------------------------------
@@ -175,6 +182,13 @@ class Configuration:
     ) -> ThresholdSettings:
         """Load detection and assessment thresholds from YAML."""
         return ThresholdSettings.model_validate(_load_yaml(thresholds_path))
+
+    def load_pipeline_profiles(
+        self,
+        profiles_path: Path = DEFAULT_PIPELINE_PROFILES_FILE,
+    ) -> PipelineProfileSettings:
+        """Load pipeline profile stage sequences from YAML."""
+        return PipelineProfileSettings.model_validate(_load_yaml(profiles_path))
 
 
 def resolve_scrfd_model_path(

@@ -1,0 +1,36 @@
+profiles:
+  enrollment:
+    - scrfd
+    - alignment
+    - assessment
+    - fraud
+    - embedding
+  attendance:
+    - scrfd
+    - alignment
+    - fraud
+    - embedding
+    - search
+  surveillance:
+    - scrfd
+    - alignment
+    - embedding
+    - search
+  kyc:
+    - scrfd
+    - alignment
+    - assessment
+    - fraud
+    - embedding
+    - verification
+  access_control:
+    - scrfd
+    - alignment
+    - fraud
+    - embedding
+    - verification
+  search:
+    - scrfd
+    - alignment
+    - embedding
+    - search

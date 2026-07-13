@@ -225,6 +225,92 @@ Search / Matching
 Decision Engine
 ```
 
+### Pipeline Orchestrator
+
+**Purpose**
+
+Select and execute biometric pipelines by use case. AI modules never
+invoke one another directly. Execution order and stage selection are
+owned by the pipeline layer in ``backend/app/pipeline/``.
+
+**Core components**
+
+| Component | Responsibility |
+| --- | --- |
+| ``PipelineContext`` | Frozen execution state: image, faces, profile, metadata, timings, errors |
+| ``PipelineProfile`` | Built-in use-case profile (enrollment, attendance, surveillance, and others) |
+| ``PipelineStage`` | Stage interface exposing static ``StageMetadata`` |
+| ``StageMetadata`` | Self-describing stage contract: requires, provides, capabilities |
+| ``PipelineRegistry`` | Register stage classes or factories; query metadata without instantiation |
+| ``PipelineBuilder`` | Load profile configuration and resolve stage names only |
+| ``PipelineExecutor`` | Run stages sequentially with timing and graceful failure |
+
+``Face`` objects remain the primary domain objects. ``PipelineContext``
+references ``context.faces`` but does not replace the ``Face`` model.
+
+**Configuration**
+
+Pipeline profile stage sequences are defined in
+``configs/pipeline_profiles.yaml`` and loaded through
+``PipelineProfileSettings``. The builder contains no profile-specific
+business logic.
+
+**Frozen context API**
+
+``PipelineContext`` exposes only these top-level fields: ``image``,
+``faces``, ``profile``, ``metadata``, ``timings``, and ``errors``.
+Runtime-specific information must be stored inside ``metadata`` rather
+than adding new top-level fields.
+
+**Registry and dependency injection**
+
+The registry stores stage classes or zero-argument factory callables.
+Stages are instantiated only when ``PipelineBuilder`` constructs a
+pipeline. New AI modules register themselves without modifying the
+builder. Registered stage metadata can be queried through
+``PipelineRegistry.get_metadata()`` without creating stage instances.
+
+**Stage metadata**
+
+Pipeline stages are self-describing through ``StageMetadata``:
+
+| Field | Purpose |
+| --- | --- |
+| ``name`` | Unique stage identifier |
+| ``version`` | Adapter version |
+| ``description`` | Human-readable responsibility |
+| ``requires`` | Required capabilities or context inputs |
+| ``provides`` | Produced capabilities or context outputs |
+| ``gpu_required`` | Whether GPU acceleration is expected |
+| ``supports_batching`` | Whether batched execution is supported |
+
+Metadata is static. It must not include latency, thresholds, configuration,
+or runtime state. The builder may use metadata for future validation and
+dependency checking.
+
+**Execution rule**
+
+Stages are thin adapters around AI modules. A stage receives
+``PipelineContext``, invokes exactly one module, updates ``context.faces``
+or ``context.metadata``, and returns the same context object.
+
+**Built-in profiles**
+
+Profile definitions live in ``configs/pipeline_profiles.yaml``:
+
+| Profile | Stages |
+| --- | --- |
+| ``ENROLLMENT`` | SCRFD → Alignment → Assessment → Fraud → Embedding |
+| ``ATTENDANCE`` | SCRFD → Alignment → Fraud → Embedding → Search |
+| ``SURVEILLANCE`` | SCRFD → Alignment → Embedding → Search |
+| ``KYC`` | SCRFD → Alignment → Assessment → Fraud → Embedding → Verification |
+| ``ACCESS_CONTROL`` | SCRFD → Alignment → Fraud → Embedding → Verification |
+| ``SEARCH`` | SCRFD → Alignment → Embedding → Search |
+| ``CUSTOM`` | Caller-defined ordered stage list |
+
+Fraud, Embedding, Search, and Verification stages are registered as
+placeholders until their modules are implemented.
+
 ### Face Detection
 
 **Purpose**
