@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 import common
+from common import load_image
 from backend.ai.alignment.aligner import FaceAligner
 from backend.ai.alignment.constants import CANONICAL_FACE_SIZE
 from backend.ai.alignment.template import get_reference_landmarks
@@ -16,14 +17,6 @@ _EXPECTED_TRANSFORM_SHAPE = (2, 3)
 _LANDMARK_ALIGNMENT_TOLERANCE = 15.0
 
 
-def load_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk using OpenCV."""
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def validate_detected_faces(faces: list[Face]) -> None:

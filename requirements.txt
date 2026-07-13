@@ -1,3 +1,4 @@
+# Core runtime dependencies (required)
 numpy==2.2.6
 opencv-python==5.0.0.93
 onnxruntime==1.23.2
@@ -5,3 +6,16 @@ pydantic==2.13.4
 PyYAML==6.0.3
 scikit-image==0.25.2
 faiss-cpu==1.14.3
+pytest==9.0.3
+
+# Dependency notes:
+# - opencv-python: image I/O, face warping, visualization scripts
+# - onnxruntime: SCRFD and ArcFace ONNX inference
+# - scikit-image: SimilarityTransform for face alignment
+# - faiss-cpu: gallery vector search (IndexFlatIP / cosine via inner product)
+# - pydantic + PyYAML: configuration validation and loading
+# - pytest: automated unit and integration tests in tests/
+
+# Optional / not yet required:
+# - fastapi, uvicorn: API layer (planned)
+# - postgresql, redis: persistence layer (planned)

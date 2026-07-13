@@ -71,7 +71,7 @@ class SearchIndex(ABC):
         self,
         vector: np.ndarray,
         *,
-        top_k: int = 5,
+        top_k: int = 1,
     ) -> RawSearchOutput:
         """Search the index for nearest embedding matches.
 

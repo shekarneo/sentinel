@@ -5,20 +5,13 @@ import cv2
 import numpy as np
 
 import common
+from common import load_image
 from backend.ai.common.onnx_engine import ONNXRuntimeEngine
 from backend.ai.detection.scrfd.preprocess import preprocess
 
 EXPECTED_OUTPUT_COUNT = 9
 
 
-def load_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk using OpenCV."""
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def validate_outputs(outputs: list[np.ndarray]) -> None:

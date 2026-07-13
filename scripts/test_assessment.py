@@ -5,30 +5,13 @@ from pathlib import Path
 import cv2
 
 import common
+from common import load_image
 from backend.ai.alignment.aligner import FaceAligner
 from backend.ai.assessment.assessor import FaceAssessor
 from backend.ai.detection.scrfd.detector import SCRFDDetector
 from backend.app.domain.face import Face
 
 
-def load_image(image_path: Path):
-    """Load an image from disk using OpenCV.
-
-    Args:
-        image_path: Path to the input image.
-
-    Returns:
-        Loaded BGR image.
-
-    Raises:
-        RuntimeError: If the image cannot be read.
-    """
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def validate_detected_faces(faces: list[Face]) -> None:

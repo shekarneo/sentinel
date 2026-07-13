@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 
 import common
+from common import load_image
 from backend.ai.alignment.aligner import FaceAligner
 from backend.ai.detection.scrfd.detector import SCRFDDetector
 from backend.ai.embedding.embedder import FaceEmbedder
@@ -15,24 +16,6 @@ _NORM_TOLERANCE = 1e-5
 _EXPECTED_DIMENSION = 512
 
 
-def load_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk using OpenCV.
-
-    Args:
-        image_path: Path to the input image.
-
-    Returns:
-        Loaded BGR image.
-
-    Raises:
-        RuntimeError: If the image cannot be read.
-    """
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def validate_detected_faces(faces: list[Face]) -> None:

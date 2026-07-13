@@ -8,7 +8,7 @@ import logging
 import time
 
 from backend.app.pipeline.context import PipelineContext
-from backend.app.pipeline.pipeline import Pipeline
+from backend.app.pipeline.pipeline import PROFILE_SEARCH_METADATA_KEY, Pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,10 @@ class PipelineExecutor:
             Updated pipeline context with faces, metadata, errors, and timings.
         """
         context.profile = pipeline.profile
+        if pipeline.search is not None:
+            context.metadata[PROFILE_SEARCH_METADATA_KEY] = (
+                pipeline.search.model_dump()
+            )
 
         for stage in pipeline.stages:
             started = time.perf_counter()

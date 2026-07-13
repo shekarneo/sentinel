@@ -16,7 +16,12 @@ from backend.ai.assessment.assessor import FaceAssessor
 from backend.ai.detection.scrfd.detector import SCRFDDetector
 from backend.ai.embedding.embedder import FaceEmbedder
 from backend.ai.search.searcher import FaceSearcher
-from backend.app.config.configuration import resolve_scrfd_model_path
+from backend.ai.verification.verifier import FaceVerifier
+from backend.app.config.configuration import (
+    PipelineProfileDefinition,
+    PipelineProfileSearchSettings,
+    resolve_scrfd_model_path,
+)
 from backend.app.pipeline.context import PipelineContext
 from backend.app.pipeline.metadata import StageMetadata
 from backend.app.pipeline.profile import PipelineProfile
@@ -31,6 +36,7 @@ class Pipeline:
 
     profile: PipelineProfile
     stages: tuple[PipelineStage, ...]
+    search: PipelineProfileSearchSettings | None = None
 
 
 def _stage_results(context: PipelineContext) -> dict[str, Any]:
@@ -184,6 +190,9 @@ class EmbeddingStage(PipelineStage):
         return context
 
 
+PROFILE_SEARCH_METADATA_KEY = "profile_search"
+
+
 class SearchStage(PipelineStage):
     """Adapter for the search engine module."""
 
@@ -207,30 +216,67 @@ class SearchStage(PipelineStage):
         self._searcher = searcher or FaceSearcher()
 
     def execute(self, context: PipelineContext) -> PipelineContext:
-        search_results = self._searcher.search(context.faces)
+        profile_search = context.metadata.get(PROFILE_SEARCH_METADATA_KEY)
+        if profile_search is None:
+            raise ValueError(
+                "Search stage requires profile search configuration in "
+                f"context.metadata['{PROFILE_SEARCH_METADATA_KEY}']."
+            )
+
+        if not profile_search.get("enabled", False):
+            raise ValueError(
+                "Search stage cannot execute when profile search is disabled."
+            )
+
+        top_k = profile_search.get("top_k")
+        if top_k is None:
+            raise ValueError(
+                "Search stage requires profile search top_k configuration."
+            )
+
+        search_results = self._searcher.search(context.faces, top_k=int(top_k))
         context.metadata["search_results"] = search_results
         logger.debug(
-            "Searched %d face(s); stored results in metadata.",
+            "Searched %d face(s) with top_k=%d; stored results in metadata.",
             len(search_results),
+            top_k,
         )
         return context
 
 
 class VerificationStage(PipelineStage):
-    """Placeholder for the verification and decision module."""
+    """Adapter for the verification engine module."""
 
     metadata = StageMetadata(
         name="verification",
         version="1.0.0",
         description="Verify identity and produce an accept or reject decision.",
-        requires=("faces", "embedding"),
+        requires=("faces", "embedding", "search"),
         provides=("verification",),
         gpu_required=False,
         supports_warmup=False,
         supports_batching=False,
     )
 
+    def __init__(self, verifier: FaceVerifier | None = None) -> None:
+        """Initialize the verification stage.
+
+        Args:
+            verifier: Optional pre-initialized face verifier.
+        """
+        self._verifier = verifier or FaceVerifier()
+
     def execute(self, context: PipelineContext) -> PipelineContext:
-        logger.info("Verification stage is not yet implemented; skipping.")
-        _stage_results(context)[self.metadata.name] = {"status": "not_implemented"}
+        search_results = context.metadata.get("search_results")
+        if search_results is None:
+            raise ValueError(
+                "Verification requires search_results in context.metadata."
+            )
+
+        verification_results = self._verifier.verify(context.faces, search_results)
+        context.metadata["verification"] = verification_results
+        logger.debug(
+            "Verified %d face(s); stored results in metadata.",
+            len(verification_results),
+        )
         return context

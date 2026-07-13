@@ -128,7 +128,7 @@ class FaceSearcher:
         self,
         faces: list[Face],
         *,
-        top_k: int = 5,
+        top_k: int = 1,
         score_threshold: float | None = None,
     ) -> list[SearchResults]:
         """Search gallery identities for each probe face embedding.

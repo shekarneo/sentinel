@@ -21,7 +21,38 @@ Execution roadmap for building the Biometric Intelligence Platform. This guide d
 
 ## Repository Structure
 
-docs/ - 01_SYSTEM_ARCHITECTURE.md - 02_DEVELOPMENT_GUIDE.md - ARCHITECTURE_DECISIONS.md - assets/
+```
+sentinel-biometric-platform/
+├── backend/
+│   ├── ai/
+│   │   ├── alignment/          # Face alignment (frozen)
+│   │   ├── assessment/         # Quality assessment (frozen)
+│   │   ├── common/             # ONNX runtime engine
+│   │   ├── detection/scrfd/    # SCRFD detector (frozen)
+│   │   ├── embedding/arcface/  # ArcFace embeddings (frozen)
+│   │   ├── search/faiss/       # FAISS search index (frozen)
+│   │   └── verification/       # Threshold verification (frozen)
+│   └── app/
+│       ├── config/             # Configuration loader (frozen)
+│       ├── core/               # App lifecycle, constants
+│       ├── domain/             # Face, SearchResults, VerificationResult
+│       ├── pipeline/           # Orchestrator (frozen)
+│       ├── repositories/       # Identity gallery mappings
+│       └── services/           # IdentityService gallery lifecycle
+├── configs/
+│   ├── settings.yaml
+│   ├── models.yaml
+│   ├── thresholds.yaml
+│   ├── pipeline_profiles.yaml
+│   └── logging.yaml
+├── docs/architecture/
+├── indexes/                    # Generated gallery index (gitignored)
+├── models/                     # ONNX weights (not committed)
+├── scripts/                    # Tests and visualizations
+└── requirements.txt
+```
+
+See [`scripts/README.md`](../scripts/README.md) for the development script catalog.
 
 ## Technology Stack
 
@@ -133,8 +164,75 @@ Verification / Decision
 4.  Pipeline Orchestrator — **complete**
 5.  Embedding Service — **complete** (frozen)
 6.  Search Engine — **complete** (frozen)
-7.  Biometric Fraud Detection
-8.  Decision Engine
+7.  Verification Engine — **complete** (frozen)
+8.  Biometric Fraud Detection
+9.  Decision Engine
+
+**Verification engine architecture**
+
+```
+Face (with EmbeddingData)
+  ↓
+SearchResults
+  ↓
+FaceVerifier
+  ↓
+VerificationEngine.verify()
+  ↓
+VerificationResult
+  ↓
+PipelineContext.metadata["verification"]
+```
+
+| Component | Role |
+| --- | --- |
+| ``VerificationEngine`` | Verification policy abstraction with ``verify()`` |
+| ``ThresholdVerificationEngine`` | Fixed-threshold provider |
+| ``FaceVerifier`` | Input validation, engine orchestration, timing |
+| ``VerificationResult`` | Per-face decision and supporting scores |
+| ``VerificationDecision`` | ``UNKNOWN``, ``ACCEPT``, ``REJECT`` |
+
+**Threshold policy**
+
+``ThresholdVerificationEngine`` orders candidates by rank and applies
+``verification.similarity_threshold`` to the best match only. Metadata
+includes ``policy`` (``threshold``) and ``engine_version`` (``1.0.0``).
+
+**Verification invariants**
+
+| ``decision`` | ``is_verified`` |
+| --- | --- |
+| ``ACCEPT`` | ``True`` |
+| ``REJECT`` | ``False`` |
+| ``UNKNOWN`` | ``False`` |
+
+``VerificationResult`` enforces this invariant at construction time.
+
+**Future policies**
+
+Adaptive, multi-template, and watchlist engines will reuse the same
+ordered-candidate evaluation pattern without changing ``FaceVerifier``.
+
+Configuration is defined in ``configs/thresholds.yaml`` under
+``verification``. ``FaceVerifier`` must not depend on FAISS or ArcFace.
+Future engines (adaptive, multi-template) implement ``VerificationEngine``
+without changing ``FaceVerifier``.
+
+**Configuration files**
+
+| File | Purpose |
+| --- | --- |
+| ``configs/settings.yaml`` | App metadata and paths |
+| ``configs/models.yaml`` | ONNX model paths and providers |
+| ``configs/thresholds.yaml`` | Detection, assessment, verification thresholds |
+| ``configs/pipeline_profiles.yaml`` | Pipeline stage sequences |
+| ``configs/logging.yaml`` | Logging defaults (wired at startup) |
+
+Verification consumes ``SearchResults`` from
+``PipelineContext.metadata["search_results"]`` and writes
+``list[VerificationResult]`` to ``PipelineContext.metadata["verification"]``.
+Results are not stored on ``Face``. Verification depends on Search; Search
+depends on Embedding; Embedding depends on Alignment.
 
 **Search engine architecture**
 
@@ -260,7 +358,7 @@ AI modules never invoke one another directly. The pipeline layer in
 | ``PipelineStage`` | Adapter interface exposing static ``StageMetadata`` and lifecycle hooks |
 | ``StageMetadata`` | Self-describing requires/provides contract for each stage |
 | ``PipelineRegistry`` | Stores stage classes or factories; exposes metadata without instantiation |
-| ``PipelineBuilder`` | Loads ``configs/pipeline_profiles.yaml`` and resolves stages |
+| ``PipelineBuilder`` | Loads ``configs/pipeline_profiles.yaml``, validates stage dependencies, and resolves stages |
 | ``PipelineExecutor`` | Runs stages sequentially with timing and graceful failure |
 
 Pipeline profiles are configuration-driven. The builder contains no
@@ -269,8 +367,30 @@ profile-specific business logic. Runtime-specific outputs belong in
 should register a stage factory without changing ``PipelineBuilder``.
 
 Stages are self-describing through ``StageMetadata``. The registry exposes
-metadata without instantiating stages. The builder may use this metadata
-for future validation and dependency checking.
+metadata without instantiating stages. ``PipelineBuilder`` validates that
+every stage's ``requires`` capabilities are satisfied by earlier stages
+before a pipeline is returned.
+
+**Stage dependency chain**
+
+```
+Alignment
+  ↓
+Embedding
+  ↓
+Search
+  ↓
+Verification
+```
+
+| Stage | Requires | Provided by earlier stage |
+| --- | --- | --- |
+| Embedding | ``alignment`` | Alignment |
+| Search | ``embedding`` | Embedding |
+| Verification | ``search`` | Search |
+
+Invalid profiles (for example Verification without Search) raise
+``ValueError`` during ``PipelineBuilder.build()``, not at execution time.
 
 **Stage lifecycle**
 
@@ -287,15 +407,27 @@ raises ``NotImplementedError`` and ArcFace does not implement batching yet.
 
 Built-in profiles (from ``configs/pipeline_profiles.yaml``):
 
-| Profile | Stages |
-| --- | --- |
-| ``ENROLLMENT`` | scrfd, alignment, assessment, fraud, embedding |
-| ``ATTENDANCE`` | scrfd, alignment, fraud, embedding, search |
-| ``SURVEILLANCE`` | scrfd, alignment, embedding, search |
-| ``KYC`` | scrfd, alignment, assessment, fraud, embedding, verification |
-| ``ACCESS_CONTROL`` | scrfd, alignment, fraud, embedding, verification |
-| ``SEARCH`` | scrfd, alignment, embedding, search |
-| ``CUSTOM`` | User-defined stage list |
+| Profile | Stages | Search depth |
+| --- | --- | --- |
+| ``ENROLLMENT`` | scrfd, alignment, assessment, fraud, embedding | Disabled |
+| ``ATTENDANCE`` | scrfd, alignment, fraud, embedding, search | Top-5 |
+| ``SURVEILLANCE`` | scrfd, alignment, embedding, search | Top-1 |
+| ``KYC`` | scrfd, alignment, assessment, fraud, embedding, search, verification | Top-5 |
+| ``ACCESS_CONTROL`` | scrfd, alignment, fraud, embedding, search, verification | Top-3 |
+| ``SEARCH`` | scrfd, alignment, embedding, search | Top-1 |
+| ``CUSTOM`` | User-defined stage list | Top-1 default |
+
+Each profile may define:
+
+```yaml
+search:
+  enabled: true
+  top_k: 5
+```
+
+``SearchStage`` reads this policy from ``PipelineContext.metadata`` and
+forwards ``top_k`` to ``FaceSearcher``. ``SearchIndex`` only executes the
+requested vector search depth.
 
 **Face Assessment architecture**
 
@@ -350,6 +482,8 @@ No code changes should be required after calibration.
 | Face Assessment | `list[Face]` (aligned) | `list[Face]` | `Face.assessment` |
 | Biometric Fraud Detection | `list[Face]` | `list[Face]` | `Face.fraud` |
 | Embedding Service | `list[Face]` | `list[Face]` | `Face.embedding` |
+| Search Engine | `list[Face]` | `list[SearchResults]` | — |
+| Verification Engine | `Face` + `SearchResults` | `VerificationResult` | — |
 | Decision Engine | `list[Face]` + platform results | Decision | — |
 
 **Face architecture rules**
@@ -421,11 +555,15 @@ Every module should follow:
 
 ## Testing Strategy
 
--   Module Testing
--   Integration Testing
--   System Testing
--   Performance Testing
--   Benchmarking
+- **Automated tests:** `pytest` in `tests/` (configuration, pipeline validation, verification policy, logging)
+- **Module scripts:** `scripts/test_*.py` for ONNX and engine smoke tests
+- **Visual validation:** `scripts/visualize_*.py` for manual inspection
+- **Integration:** `scripts/test_pipeline.py` and `scripts/test_verification.py`
+
+```bash
+pytest
+python scripts/test_pipeline.py image.jpg
+```
 
 ## Future Enhancements
 

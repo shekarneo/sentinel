@@ -8,7 +8,7 @@ application configuration from YAML files.
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from backend.app.core.constants import (
     DEFAULT_MODELS_FILE,
@@ -118,9 +118,14 @@ class AssessmentThresholdSettings(BaseModel):
     overall: OverallThresholdSettings
 
 
+class VerificationThresholdSettings(BaseModel):
+    similarity_threshold: float
+
+
 class ThresholdSettings(BaseModel):
     detection: DetectionThresholdSettings = DetectionThresholdSettings()
     assessment: AssessmentThresholdSettings
+    verification: VerificationThresholdSettings
 
 
 class InputSizeSettings(BaseModel):
@@ -155,10 +160,36 @@ class ModelSettings(BaseModel):
     search: SearchModelSettings
 
 
-class PipelineProfileSettings(BaseModel):
-    """Pipeline profile stage sequences loaded from YAML."""
+class PipelineProfileSearchSettings(BaseModel):
+    """Search depth policy for a pipeline profile."""
 
-    profiles: dict[str, list[str]]
+    enabled: bool = True
+    top_k: int | None = None
+
+    @model_validator(mode="after")
+    def validate_top_k(self) -> "PipelineProfileSearchSettings":
+        """Validate search depth when search is enabled for a profile."""
+        if self.enabled:
+            if self.top_k is None:
+                raise ValueError("top_k is required when search.enabled is true.")
+            if self.top_k < 1:
+                raise ValueError(f"top_k must be at least 1, got {self.top_k}.")
+        return self
+
+
+class PipelineProfileDefinition(BaseModel):
+    """Resolved pipeline profile definition loaded from YAML."""
+
+    stages: list[str]
+    search: PipelineProfileSearchSettings = Field(
+        default_factory=lambda: PipelineProfileSearchSettings(enabled=False)
+    )
+
+
+class PipelineProfileSettings(BaseModel):
+    """Pipeline profile definitions loaded from YAML."""
+
+    profiles: dict[str, PipelineProfileDefinition]
 
 
 # -------------------------------------------------------------------------
@@ -194,7 +225,7 @@ class Configuration:
         self,
         thresholds_path: Path = DEFAULT_THRESHOLDS_FILE,
     ) -> ThresholdSettings:
-        """Load detection and assessment thresholds from YAML."""
+        """Load detection, assessment, and verification thresholds from YAML."""
         return ThresholdSettings.model_validate(_load_yaml(thresholds_path))
 
     def load_pipeline_profiles(

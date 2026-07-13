@@ -29,3 +29,6 @@ assessment:
     visibility_weight: 0.15
     size_weight: 0.15
     minimum_acceptable_score: 0.70
+
+verification:
+  similarity_threshold: 0.45

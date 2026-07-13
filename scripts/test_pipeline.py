@@ -5,6 +5,7 @@ from pathlib import Path
 import cv2
 
 import common
+from common import load_image
 from backend.app.pipeline import (
     PipelineBuilder,
     PipelineContext,
@@ -16,24 +17,6 @@ from backend.app.pipeline import (
 from backend.app.domain.face import Face
 
 
-def load_image(image_path: Path):
-    """Load an image from disk using OpenCV.
-
-    Args:
-        image_path: Path to the input image.
-
-    Returns:
-        Loaded BGR image.
-
-    Raises:
-        RuntimeError: If the image cannot be read.
-    """
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def count_faces_with_alignment(faces: list[Face]) -> int:

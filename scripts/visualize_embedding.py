@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 
 import common
+from common import load_image
 from backend.ai.alignment.aligner import FaceAligner
 from backend.ai.alignment.constants import CANONICAL_FACE_SIZE
 from backend.ai.alignment.utils import crop_face_region
@@ -18,14 +19,6 @@ PANEL_BORDER = 4
 _PREVIEW_VALUES = 10
 
 
-def load_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk using OpenCV."""
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def build_square_panel(image: np.ndarray) -> np.ndarray:

@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 
 import common
+from common import load_image
 from backend.ai.alignment.aligner import FaceAligner
 from backend.ai.detection.scrfd.detector import SCRFDDetector
 from backend.ai.embedding.embedder import FaceEmbedder
@@ -15,14 +16,6 @@ from backend.app.services.identity_service import IdentityService
 from backend.app.domain.face import Face
 
 
-def load_image(image_path: Path) -> np.ndarray:
-    """Load an image from disk using OpenCV."""
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def build_gallery_identities(faces: list[Face]) -> list[str]:

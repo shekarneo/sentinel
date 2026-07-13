@@ -1,36 +1,66 @@
 profiles:
   enrollment:
-    - scrfd
-    - alignment
-    - assessment
-    - fraud
-    - embedding
+    stages:
+      - scrfd
+      - alignment
+      - assessment
+      - fraud
+      - embedding
+    search:
+      enabled: false
+
   attendance:
-    - scrfd
-    - alignment
-    - fraud
-    - embedding
-    - search
+    stages:
+      - scrfd
+      - alignment
+      - fraud
+      - embedding
+      - search
+    search:
+      enabled: true
+      top_k: 5
+
   surveillance:
-    - scrfd
-    - alignment
-    - embedding
-    - search
+    stages:
+      - scrfd
+      - alignment
+      - embedding
+      - search
+    search:
+      enabled: true
+      top_k: 1
+
   kyc:
-    - scrfd
-    - alignment
-    - assessment
-    - fraud
-    - embedding
-    - verification
+    stages:
+      - scrfd
+      - alignment
+      - assessment
+      - fraud
+      - embedding
+      - search
+      - verification
+    search:
+      enabled: true
+      top_k: 5
+
   access_control:
-    - scrfd
-    - alignment
-    - fraud
-    - embedding
-    - verification
+    stages:
+      - scrfd
+      - alignment
+      - fraud
+      - embedding
+      - search
+      - verification
+    search:
+      enabled: true
+      top_k: 3
+
   search:
-    - scrfd
-    - alignment
-    - embedding
-    - search
+    stages:
+      - scrfd
+      - alignment
+      - embedding
+      - search
+    search:
+      enabled: true
+      top_k: 1

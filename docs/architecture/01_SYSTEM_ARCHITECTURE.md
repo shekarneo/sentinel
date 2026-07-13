@@ -300,8 +300,8 @@ Default lifecycle methods are no-ops. ``EmbeddingStage.initialize()`` calls
 Warm-up is idempotent and does not repeat expensive initialization.
 
 Metadata is static. It must not include latency, thresholds, configuration,
-or runtime state. The builder may use metadata for future validation and
-dependency checking.
+or runtime state. ``PipelineBuilder`` uses metadata to validate stage
+dependencies during pipeline construction.
 
 **Execution rule**
 
@@ -313,18 +313,58 @@ or ``context.metadata``, and returns the same context object.
 
 Profile definitions live in ``configs/pipeline_profiles.yaml``:
 
-| Profile | Stages |
-| --- | --- |
-| ``ENROLLMENT`` | SCRFD → Alignment → Assessment → Fraud → Embedding |
-| ``ATTENDANCE`` | SCRFD → Alignment → Fraud → Embedding → Search |
-| ``SURVEILLANCE`` | SCRFD → Alignment → Embedding → Search |
-| ``KYC`` | SCRFD → Alignment → Assessment → Fraud → Embedding → Verification |
-| ``ACCESS_CONTROL`` | SCRFD → Alignment → Fraud → Embedding → Verification |
-| ``SEARCH`` | SCRFD → Alignment → Embedding → Search |
-| ``CUSTOM`` | Caller-defined ordered stage list |
+| Profile | Stages | Search depth |
+| --- | --- | --- |
+| ``ENROLLMENT`` | SCRFD → Alignment → Assessment → Fraud → Embedding | Disabled |
+| ``ATTENDANCE`` | SCRFD → Alignment → Fraud → Embedding → Search | Top-5 |
+| ``SURVEILLANCE`` | SCRFD → Alignment → Embedding → Search | Top-1 |
+| ``KYC`` | SCRFD → Alignment → Assessment → Fraud → Embedding → Search → Verification | Top-5 |
+| ``ACCESS_CONTROL`` | SCRFD → Alignment → Fraud → Embedding → Search → Verification | Top-3 |
+| ``SEARCH`` | SCRFD → Alignment → Embedding → Search | Top-1 |
+| ``CUSTOM`` | Caller-defined ordered stage list | Top-1 default |
 
-Fraud, Embedding, Search, and Verification stages are registered as
-placeholders until their modules are implemented.
+Search depth is a business-level policy configured per pipeline profile in
+``configs/pipeline_profiles.yaml``. ``SearchIndex`` is unaware of business
+intent. ``SearchStage`` reads the resolved profile search policy and passes
+``top_k`` to ``FaceSearcher.search()``, which forwards it to
+``SearchIndex.search()`` without choosing depth itself.
+
+| Use case | ``top_k`` | Rationale |
+| --- | --- | --- |
+| Surveillance | 1 | Low latency, continuous tracking |
+| Attendance | 5 | Verification over multiple enrollment templates |
+| KYC | 5 | Identity verification with candidate evaluation |
+| Access Control | 3 | Fast verification with limited candidate fallback |
+| Search / Investigation | 1 today (20 future) | Analyst workflows may request deeper candidate lists |
+
+Fraud and Verification policy stages may remain placeholders until their
+modules are fully implemented. Search and Embedding stages are implemented.
+
+**Stage dependency chain**
+
+The pipeline builder validates ``StageMetadata.requires`` against
+capabilities provided by earlier stages during construction. Invalid
+profiles fail before execution.
+
+```
+Alignment
+  ↓
+Embedding
+  ↓
+Search
+  ↓
+Verification
+```
+
+| Dependency | Required capability | Provided by |
+| --- | --- | --- |
+| Embedding | ``alignment`` | Alignment stage |
+| Search | ``embedding`` | Embedding stage |
+| Verification | ``search`` | Search stage |
+
+Verification must never appear before Search in a profile. Search must
+never appear before Embedding. Embedding must never appear before
+Alignment.
 
 ### Face Detection
 
@@ -622,6 +662,12 @@ SearchResults
 PipelineContext.metadata["search_results"]
 ```
 
+Search depth is configured per pipeline profile in
+``configs/pipeline_profiles.yaml`` and injected into
+``PipelineContext.metadata['profile_search']`` by ``PipelineExecutor``.
+``FaceSearcher`` forwards the requested ``top_k`` to ``SearchIndex`` without
+choosing business search depth itself.
+
 **Enrollment**
 
 ```
@@ -716,6 +762,146 @@ Search results are not attached to ``Face``.
 | ``SearchResults.provider`` | Active search provider name |
 
 **Status:** Architecture frozen. FAISS provider complete.
+
+### Verification Engine
+
+**Purpose**
+
+Evaluate search candidates for probe faces and produce accept or reject
+verification decisions. Verification operates on ``SearchResults`` produced
+by the Search Engine; it must not re-run gallery search or embedding
+extraction.
+
+**Architecture**
+
+```
+Face (with EmbeddingData)
+  ↓
+SearchResults
+  ↓
+FaceVerifier
+  ↓
+VerificationEngine.verify()
+  ↓
+VerificationResult
+  ↓
+PipelineContext.metadata["verification"]
+```
+
+**Module layout**
+
+| Component | Responsibility |
+| --- | --- |
+| ``VerificationEngine`` | Verification policy abstraction: ``verify()`` |
+| ``ThresholdVerificationEngine`` | Fixed-threshold verification provider |
+| ``FaceVerifier`` | Input validation, engine orchestration, timing |
+| ``VerificationResult`` | Per-face verification decision and scores |
+| ``VerificationDecision`` | ``UNKNOWN``, ``ACCEPT``, ``REJECT`` |
+
+**Responsibility ownership**
+
+| Concern | Owner |
+| --- | --- |
+| Gallery search and candidate ranking | ``FaceSearcher`` / ``SearchIndex`` |
+| Verification policy and decision logic | ``VerificationEngine`` |
+| Probe validation and result assembly | ``FaceVerifier`` |
+| Verification output storage | ``PipelineContext.metadata["verification"]`` |
+
+``FaceVerifier`` must not depend on FAISS, ArcFace, or other provider
+implementations. It delegates policy to ``VerificationEngine`` only.
+
+**Configuration**
+
+Configuration files live in ``configs/``:
+
+| File | Purpose | Consumed by |
+| --- | --- | --- |
+| ``settings.yaml`` | App metadata, paths | ``Configuration.load()`` |
+| ``models.yaml`` | Model paths and providers | ``Configuration.load_models()`` |
+| ``thresholds.yaml`` | Detection, assessment, verification thresholds | ``Configuration.load_thresholds()`` |
+| ``pipeline_profiles.yaml`` | Pipeline stage sequences | ``Configuration.load_pipeline_profiles()`` |
+| ``logging.yaml`` | Logging format/level | ``configure_logging()`` at startup |
+
+Keys reserved for future runtime use: ``app.debug``, ``runtime.device``,
+``paths.data_dir``.
+
+Verification thresholds live in ``configs/thresholds.yaml`` under
+``verification``:
+
+| Key | Purpose |
+| --- | --- |
+| ``similarity_threshold`` | Minimum similarity score required for acceptance |
+
+**Consumes**
+
+One ``Face`` with ``EmbeddingData`` and one ``SearchResults`` object per
+probe.
+
+**Produces**
+
+``list[VerificationResult]`` stored in
+``PipelineContext.metadata["verification"]``. Verification results are not
+attached to ``Face``.
+
+| Field | Purpose |
+| --- | --- |
+| ``VerificationResult.decision`` | ``UNKNOWN``, ``ACCEPT``, or ``REJECT`` |
+| ``VerificationResult.matched_identity_id`` | Accepted gallery identity, if any |
+| ``VerificationResult.similarity_score`` | Score used for the decision |
+| ``VerificationResult.threshold`` | Threshold applied by the engine |
+| ``VerificationResult.is_verified`` | Convenience accept/reject flag |
+| ``VerificationResult.verification_time_ms`` | Verification latency |
+| ``VerificationResult.metadata`` | Optional downstream metadata |
+| ``VerificationResult.metadata.policy`` | Active verification policy (``threshold``) |
+| ``VerificationResult.metadata.engine_version`` | Verification engine version (``1.0.0``) |
+
+**Threshold policy**
+
+``ThresholdVerificationEngine`` orders search candidates by rank and
+evaluates the best-ranked candidate against
+``verification.similarity_threshold`` from ``configs/thresholds.yaml``:
+
+| Condition | Decision |
+| --- | --- |
+| No candidates | ``UNKNOWN`` |
+| Best similarity >= threshold | ``ACCEPT`` |
+| Best similarity < threshold | ``REJECT`` |
+
+The threshold policy evaluates only the best candidate today. Candidate
+ordering is internal so future policies (adaptive, multi-template,
+watchlist) can evaluate the same ordered list without interface changes.
+
+**Verification invariants**
+
+``VerificationResult`` enforces a strict relationship between
+``decision`` and ``is_verified``:
+
+| ``decision`` | ``is_verified`` |
+| --- | --- |
+| ``ACCEPT`` | ``True`` |
+| ``REJECT`` | ``False`` |
+| ``UNKNOWN`` | ``False`` |
+
+These values must never diverge. Engines derive ``is_verified`` through
+``resolve_is_verified()``, and ``VerificationResult`` rejects invalid
+combinations at construction time.
+
+**Future engines**
+
+Future providers must implement ``VerificationEngine`` without changing
+``FaceVerifier``:
+
+- ``ThresholdVerificationEngine`` — fixed similarity threshold (**complete**)
+- ``AdaptiveVerificationEngine`` — dynamic threshold calibration
+- ``MultiTemplateVerificationEngine`` — multi-template identity matching
+- ``WatchlistVerificationEngine`` — watchlist-specific acceptance rules
+
+**Status:** Architecture frozen. Threshold policy complete.
+
+Verification depends on Search. Search depends on Embedding. Embedding
+depends on Alignment. The pipeline builder enforces this dependency chain
+at construction time using ``StageMetadata.requires`` and
+``StageMetadata.provides``.
 
 ### Decision Engine
 

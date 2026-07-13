@@ -3,6 +3,7 @@ from pathlib import Path
 import cv2
 
 import common
+from common import load_image
 from backend.ai.detection.scrfd.detector import SCRFDDetector
 from backend.app.domain.face import Face
 
@@ -15,14 +16,6 @@ LANDMARK_COLORS = [
 ]
 
 
-def load_image(image_path: Path):
-    """Load an image from disk using OpenCV."""
-    image = cv2.imread(str(image_path))
-
-    if image is None:
-        raise RuntimeError(f"Failed to load image: {image_path}")
-
-    return image
 
 
 def validate_faces(faces: list[Face]) -> None:
