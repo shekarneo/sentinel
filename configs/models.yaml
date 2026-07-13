@@ -1,0 +1,6 @@
+detection:
+  scrfd:
+    model: detection/scrfd/det_10g.onnx
+    input:
+      width: 640
+      height: 640

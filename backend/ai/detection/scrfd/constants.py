@@ -1,0 +1,2 @@
+STRIDES = (8, 16, 32)
+NUM_ANCHORS = 2

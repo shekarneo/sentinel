@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# Python caches
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+logs/
+*.log
+
+# Models
+*.engine
+*.trt
+*.onnx.cache
+
+# Build
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AI Models
+models/**/*.onnx
+models/**/*.engine
+models/**/*.trt
+
+# Generated outputs
+image_alignment_compare_*.jpg
+image_scrfd.jpg

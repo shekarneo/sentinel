@@ -1,0 +1,6 @@
+numpy==2.2.6
+opencv-python==5.0.0.93
+onnxruntime==1.23.2
+pydantic==2.13.4
+PyYAML==6.0.3
+scikit-image==0.25.2

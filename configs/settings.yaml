@@ -1,0 +1,13 @@
+app:
+  name: Sentinel
+  version: 0.1.0
+  environment: development
+  debug: true
+
+runtime:
+  device: cpu
+
+paths:
+  models_dir: models
+  logs_dir: logs
+  data_dir: datasets

@@ -1,0 +1,4 @@
+detection:
+  scrfd:
+    score_threshold: 0.5
+    nms_iou_threshold: 0.4
