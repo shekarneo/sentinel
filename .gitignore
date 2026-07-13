@@ -41,5 +41,6 @@ models/**/*.trt
 image_alignment_compare_*.jpg
 image_scrfd.jpg
 image_assessment_*.jpg
+image_embedding_*.jpg
 assessment_*.jpg
 assessment_output/
