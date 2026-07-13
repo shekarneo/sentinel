@@ -137,8 +137,15 @@ class DetectionModelSettings(BaseModel):
     scrfd: ScrfdModelSettings = ScrfdModelSettings()
 
 
+class EmbeddingModelSettings(BaseModel):
+    provider: str
+    model: str
+    input_size: int
+
+
 class ModelSettings(BaseModel):
     detection: DetectionModelSettings = DetectionModelSettings()
+    embedding: EmbeddingModelSettings
 
 
 class PipelineProfileSettings(BaseModel):
@@ -208,4 +215,24 @@ def resolve_scrfd_model_path(
         PROJECT_ROOT
         / settings.paths.models_dir
         / model_settings.detection.scrfd.model
+    )
+
+
+def resolve_embedding_model_path(
+    settings: Settings | None = None,
+    model_settings: ModelSettings | None = None,
+) -> Path:
+    """Resolve the embedding ONNX model path from configuration."""
+    configuration = Configuration()
+
+    if settings is None:
+        settings = configuration.load()
+
+    if model_settings is None:
+        model_settings = configuration.load_models()
+
+    return (
+        PROJECT_ROOT
+        / settings.paths.models_dir
+        / model_settings.embedding.model
     )

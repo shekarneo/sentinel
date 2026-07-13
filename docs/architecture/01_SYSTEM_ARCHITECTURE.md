@@ -282,7 +282,22 @@ Pipeline stages are self-describing through ``StageMetadata``:
 | ``requires`` | Required capabilities or context inputs |
 | ``provides`` | Produced capabilities or context outputs |
 | ``gpu_required`` | Whether GPU acceleration is expected |
+| ``supports_warmup`` | Whether the stage exposes a warm-up lifecycle hook |
 | ``supports_batching`` | Whether batched execution is supported |
+
+**Stage lifecycle**
+
+Pipeline stages may override optional lifecycle hooks:
+
+| Method | Purpose |
+| --- | --- |
+| ``initialize()`` | Prepare resources before execution (for example model warm-up) |
+| ``execute()`` | Run the stage against the pipeline context |
+| ``shutdown()`` | Release resources after execution |
+
+Default lifecycle methods are no-ops. ``EmbeddingStage.initialize()`` calls
+``FaceEmbedder.warmup()`` to load the ONNX provider before the first request.
+Warm-up is idempotent and does not repeat expensive initialization.
 
 Metadata is static. It must not include latency, thresholds, configuration,
 or runtime state. The builder may use metadata for future validation and
@@ -496,6 +511,56 @@ Extract biometric feature vectors from aligned face crops.
 Embeddings are always extracted from **aligned faces** produced by the
 Face Alignment module. Raw detection crops are not used for recognition.
 
+**Architecture**
+
+```
+Face (with AlignmentData)
+  ↓
+FaceEmbedder
+  ↓
+EmbeddingModel
+  ↓
+EmbeddingData
+  ↓
+Face.embedding
+```
+
+**Module layout**
+
+| Component | Responsibility |
+| --- | --- |
+| ``EmbeddingModel`` | Provider abstraction: ``load()``, ``warmup()``, ``embed()``, ``embed_batch()`` |
+| ``FaceEmbedder`` | Validates aligned faces, warm-up, and populates ``Face.embedding`` |
+| ``EmbeddingData`` | Domain model for vector output only |
+| ``ArcFaceEmbeddingModel`` | ArcFace provider with thread-safe model loading |
+
+**Warm-up**
+
+``FaceEmbedder.warmup()`` ensures the configured provider is loaded before
+the first embedding request. ``EmbeddingModel.warmup()`` defaults to
+``load()``; providers may override it for additional one-time setup.
+Warm-up is idempotent.
+
+**Future batching**
+
+``EmbeddingModel.embed_batch()`` is reserved for future batched inference.
+The default implementation raises ``NotImplementedError``. ArcFace currently
+embeds faces sequentially through ``embed()``.
+
+**Configuration**
+
+Embedding provider settings live in ``configs/models.yaml`` under
+``embedding``:
+
+| Key | Purpose |
+| --- | --- |
+| ``provider`` | Active provider (``arcface`` first) |
+| ``model`` | Relative ONNX model path |
+| ``input_size`` | Canonical aligned input size |
+
+Future providers (AdaFace, MagFace, ElasticFace) must implement
+``EmbeddingModel`` without changing ``FaceEmbedder``.
+
 **Consumes**
 
 `list[Face]` where ``Face.alignment`` is populated
@@ -504,6 +569,30 @@ Face Alignment module. Raw detection crops are not used for recognition.
 
 The same ``Face`` objects with ``Face.embedding`` populated
 (``EmbeddingData``).
+
+``EmbeddingData`` stores only embedding output:
+
+| Field | Purpose |
+| --- | --- |
+| ``vector`` | Unit-length L2-normalized feature vector |
+| ``dimension`` | Vector length |
+| ``normalized`` | Guaranteed ``True`` for successful embeddings; providers normalize before return |
+| ``model_name`` | Provider model identifier |
+| ``inference_time_ms`` | Optional inference latency |
+| ``confidence`` | Optional provider confidence |
+
+Similarity, identity, search results, and gallery metadata remain outside
+``EmbeddingData``.
+
+**Embedding invariant**
+
+Every embedding produced by the Embedding Engine is unit-normalized
+(L2-normalized). Similarity search, FAISS indexing, verification, and
+clustering operate directly on ``Face.embedding.vector`` without additional
+normalization. Providers (ArcFace, AdaFace, MagFace, and future models)
+are responsible for normalization before returning ``EmbeddingData``.
+
+**Status:** Architecture frozen. ArcFace provider complete.
 
 ### Decision Engine
 

@@ -4,3 +4,8 @@ detection:
     input:
       width: 640
       height: 640
+
+embedding:
+  provider: arcface
+  model: embedding/arcface/w600k_r50.onnx
+  input_size: 112

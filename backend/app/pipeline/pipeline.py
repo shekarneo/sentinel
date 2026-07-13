@@ -14,6 +14,7 @@ from typing import Any
 from backend.ai.alignment.aligner import FaceAligner
 from backend.ai.assessment.assessor import FaceAssessor
 from backend.ai.detection.scrfd.detector import SCRFDDetector
+from backend.ai.embedding.embedder import FaceEmbedder
 from backend.app.config.configuration import resolve_scrfd_model_path
 from backend.app.pipeline.context import PipelineContext
 from backend.app.pipeline.metadata import StageMetadata
@@ -49,6 +50,7 @@ class ScrfdDetectionStage(PipelineStage):
         requires=("image",),
         provides=("faces",),
         gpu_required=True,
+        supports_warmup=False,
         supports_batching=False,
     )
 
@@ -77,6 +79,7 @@ class AlignmentStage(PipelineStage):
         requires=("faces",),
         provides=("alignment",),
         gpu_required=False,
+        supports_warmup=False,
         supports_batching=False,
     )
 
@@ -104,6 +107,7 @@ class AssessmentStage(PipelineStage):
         requires=("image", "faces", "alignment"),
         provides=("assessment",),
         gpu_required=False,
+        supports_warmup=False,
         supports_batching=False,
     )
 
@@ -131,6 +135,7 @@ class FraudDetectionStage(PipelineStage):
         requires=("image", "faces", "alignment"),
         provides=("fraud",),
         gpu_required=True,
+        supports_warmup=False,
         supports_batching=False,
     )
 
@@ -141,7 +146,7 @@ class FraudDetectionStage(PipelineStage):
 
 
 class EmbeddingStage(PipelineStage):
-    """Placeholder for the embedding service module."""
+    """Adapter for the embedding engine module."""
 
     metadata = StageMetadata(
         name="embedding",
@@ -150,12 +155,31 @@ class EmbeddingStage(PipelineStage):
         requires=("image", "faces", "alignment"),
         provides=("embedding",),
         gpu_required=True,
+        supports_warmup=True,
         supports_batching=True,
     )
 
+    def __init__(self, embedder: FaceEmbedder | None = None) -> None:
+        """Initialize the embedding stage.
+
+        Args:
+            embedder: Optional pre-initialized face embedder.
+        """
+        self._embedder = embedder or FaceEmbedder()
+        self._initialized = False
+
+    def initialize(self) -> None:
+        """Load and warm up the embedding provider before execution."""
+        if self._initialized:
+            return
+
+        self._embedder.warmup()
+        self._initialized = True
+        logger.debug("Embedding stage initialized.")
+
     def execute(self, context: PipelineContext) -> PipelineContext:
-        logger.info("Embedding stage is not yet implemented; skipping.")
-        _stage_results(context)[self.metadata.name] = {"status": "not_implemented"}
+        self._embedder.embed(context.faces)
+        logger.debug("Embedded %d face(s).", len(context.faces))
         return context
 
 
@@ -169,6 +193,7 @@ class SearchStage(PipelineStage):
         requires=("faces", "embedding"),
         provides=("search",),
         gpu_required=False,
+        supports_warmup=False,
         supports_batching=False,
     )
 
@@ -188,6 +213,7 @@ class VerificationStage(PipelineStage):
         requires=("faces", "embedding"),
         provides=("verification",),
         gpu_required=False,
+        supports_warmup=False,
         supports_batching=False,
     )
 

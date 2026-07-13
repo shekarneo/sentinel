@@ -19,6 +19,7 @@ class StageMetadata:
         requires: Capability or context inputs required before execution.
         provides: Capability or context outputs produced after execution.
         gpu_required: Whether the stage expects GPU acceleration.
+        supports_warmup: Whether the stage exposes a warm-up lifecycle hook.
         supports_batching: Whether the stage supports batched execution.
     """
 
@@ -28,4 +29,5 @@ class StageMetadata:
     requires: tuple[str, ...]
     provides: tuple[str, ...]
     gpu_required: bool
+    supports_warmup: bool
     supports_batching: bool

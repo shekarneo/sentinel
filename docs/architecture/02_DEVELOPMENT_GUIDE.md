@@ -131,9 +131,47 @@ Verification / Decision
 2.  Face Alignment — **complete** (frozen)
 3.  Face Assessment Engine — **complete** (frozen)
 4.  Pipeline Orchestrator — **complete**
-5.  Biometric Fraud Detection
-6.  Embedding Service
+5.  Embedding Service — **architecture frozen**
+6.  Biometric Fraud Detection
 7.  Decision Engine
+
+**Embedding engine architecture**
+
+```
+Face (with AlignmentData)
+  ↓
+FaceEmbedder
+  ↓
+EmbeddingModel
+  ↓
+EmbeddingData
+  ↓
+Face.embedding
+```
+
+| Component | Role |
+| --- | --- |
+| ``EmbeddingModel`` | Provider abstraction with ``load()``, ``warmup()``, ``embed()``, ``embed_batch()`` |
+| ``FaceEmbedder`` | Validates aligned faces, warm-up, and populates ``Face.embedding`` |
+| ``EmbeddingData`` | Domain model for embedding vectors only |
+| ``ArcFaceEmbeddingModel`` | ArcFace provider with thread-safe loading |
+
+Configuration is defined in ``configs/models.yaml`` under ``embedding``.
+ArcFace is the first provider. Future providers (AdaFace, MagFace,
+ElasticFace) must implement ``EmbeddingModel`` without changing
+``FaceEmbedder``.
+
+``EmbeddingData`` must not store similarity, identity, search results, or
+gallery metadata. Embedding enriches ``Face.embedding`` only.
+
+**Embedding invariant**
+
+Every embedding produced by the Embedding Engine is unit-normalized
+(L2-normalized). Similarity search, FAISS indexing, verification, and
+clustering operate directly on ``Face.embedding.vector`` without additional
+normalization. Providers are responsible for L2 normalization before
+returning ``EmbeddingData``; ``normalized=True`` is guaranteed for
+successful embeddings.
 
 **Pipeline orchestrator**
 
@@ -144,7 +182,7 @@ AI modules never invoke one another directly. The pipeline layer in
 | --- | --- |
 | ``PipelineContext`` | Frozen API: image, faces, profile, metadata, timings, errors |
 | ``PipelineProfile`` | Selects a built-in use case or ``CUSTOM`` stage list |
-| ``PipelineStage`` | Adapter interface exposing static ``StageMetadata`` |
+| ``PipelineStage`` | Adapter interface exposing static ``StageMetadata`` and lifecycle hooks |
 | ``StageMetadata`` | Self-describing requires/provides contract for each stage |
 | ``PipelineRegistry`` | Stores stage classes or factories; exposes metadata without instantiation |
 | ``PipelineBuilder`` | Loads ``configs/pipeline_profiles.yaml`` and resolves stages |
@@ -158,6 +196,19 @@ should register a stage factory without changing ``PipelineBuilder``.
 Stages are self-describing through ``StageMetadata``. The registry exposes
 metadata without instantiating stages. The builder may use this metadata
 for future validation and dependency checking.
+
+**Stage lifecycle**
+
+Stages expose optional ``initialize()`` and ``shutdown()`` hooks. Defaults
+are no-ops. ``EmbeddingStage.initialize()`` calls ``FaceEmbedder.warmup()``
+to load the ONNX provider before execution. Lifecycle hooks are idempotent.
+
+**Embedding warm-up and batching**
+
+Call ``FaceEmbedder.warmup()`` during application or stage initialization to
+avoid cold-start latency on the first embedding request. ``EmbeddingModel``
+also exposes ``embed_batch()`` for future batched inference; the default
+raises ``NotImplementedError`` and ArcFace does not implement batching yet.
 
 Built-in profiles (from ``configs/pipeline_profiles.yaml``):
 

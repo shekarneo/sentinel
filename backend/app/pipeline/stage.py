@@ -36,3 +36,17 @@ class PipelineStage(ABC):
         Returns:
             Updated pipeline context.
         """
+
+    def initialize(self) -> None:
+        """Prepare stage resources before execution.
+
+        Stages may override this method to load models or perform warm-up.
+        The default implementation is a no-op.
+        """
+
+    def shutdown(self) -> None:
+        """Release stage resources after execution.
+
+        Stages may override this method to release external resources.
+        The default implementation is a no-op.
+        """
