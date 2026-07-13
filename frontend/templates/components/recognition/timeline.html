@@ -1,0 +1,23 @@
+<div class="execution-timeline card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Execution Timeline</span>
+    <span class="badge text-bg-info">Total {{ timeline.total_ms }} ms</span>
+  </div>
+  <div class="card-body">
+  {% if timeline.entries %}
+    <div class="timeline-track">
+      {% for item in timeline.entries %}
+      <div class="timeline-node">
+        <div class="timeline-label">{{ item.label }}</div>
+        <div class="timeline-bar-wrap">
+          <div class="timeline-bar" style="width: {{ item.width_pct }}%"></div>
+        </div>
+        <div class="timeline-value">{{ item.time_ms }} ms</div>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-secondary small">No stage timings available.</div>
+  {% endif %}
+  </div>
+</div>

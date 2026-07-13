@@ -1,0 +1,12 @@
+{% for embedding in stage.details.faces %}
+<div class="border rounded p-3 mb-2 small">
+  <div class="row g-2">
+    <div class="col-md-3"><strong>Model</strong><br>{{ embedding.model_name }}</div>
+    <div class="col-md-3"><strong>Dimension</strong><br>{{ embedding.dimension }}</div>
+    <div class="col-md-3"><strong>Vector norm</strong><br>{{ embedding.vector_norm if embedding.vector_norm is not none else "—" }}</div>
+    <div class="col-md-3"><strong>Inference</strong><br>{{ embedding.inference_time_ms or 0 }} ms</div>
+  </div>
+</div>
+{% else %}
+<div class="text-secondary small">Embedding not available.</div>
+{% endfor %}

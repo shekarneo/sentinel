@@ -1,0 +1,60 @@
+<aside class="sidebar d-flex flex-column">
+  <div class="sidebar-brand px-3 py-4">
+    <div class="d-flex align-items-center gap-2">
+      <span class="brand-icon"><i class="bi bi-shield-lock-fill"></i></span>
+      <div>
+        <div class="brand-title">Sentinel</div>
+        <div class="brand-subtitle">Biometric Console</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav flex-grow-1 px-2">
+    <a class="nav-link {% if page == 'dashboard' %}active{% endif %}" href="/dashboard">
+      <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+    <a class="nav-link {% if page == 'recognition' %}active{% endif %}" href="/recognition">
+      <i class="bi bi-camera"></i> Recognition
+    </a>
+    <a class="nav-link {% if page == 'live_camera' %}active{% endif %}" href="/live">
+      <i class="bi bi-camera-video"></i> Live Camera
+    </a>
+    <a class="nav-link {% if page == 'enrollment' %}active{% endif %}" href="/enrollment">
+      <i class="bi bi-person-plus"></i> Enrollment
+    </a>
+    <a class="nav-link {% if page == 'gallery' %}active{% endif %}" href="/gallery">
+      <i class="bi bi-collection"></i> Gallery
+    </a>
+    <a class="nav-link {% if page == 'pipeline' %}active{% endif %}" href="/pipeline">
+      <i class="bi bi-diagram-3"></i> Pipeline Explorer
+    </a>
+    <a class="nav-link {% if page == 'benchmarks' %}active{% endif %}" href="/benchmarks">
+      <i class="bi bi-stopwatch"></i> Benchmarks
+    </a>
+    <a class="nav-link {% if page == 'executions' %}active{% endif %}" href="/executions">
+      <i class="bi bi-activity"></i> Execution History
+    </a>
+    <a class="nav-link {% if page == 'jobs' %}active{% endif %}" href="/jobs">
+      <i class="bi bi-list-task"></i> Jobs
+    </a>
+    <a class="nav-link {% if page == 'datasets' %}active{% endif %}" href="/datasets">
+      <i class="bi bi-folder2-open"></i> Dataset Processing
+    </a>
+    <a class="nav-link {% if page == 'configuration' %}active{% endif %}" href="/configuration">
+      <i class="bi bi-sliders"></i> Configuration
+    </a>
+    <a class="nav-link" href="/docs" target="_blank" rel="noopener">
+      <i class="bi bi-braces"></i> API Docs
+    </a>
+    <a class="nav-link disabled" href="#" aria-disabled="true" tabindex="-1">
+      <i class="bi bi-exclamation-triangle"></i> Fraud Detection
+      <span class="badge text-bg-secondary ms-auto">Soon</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer px-3 py-3">
+    <a class="nav-link {% if page == 'about' %}active{% endif %}" href="/about">
+      <i class="bi bi-info-circle"></i> About
+    </a>
+  </div>
+</aside>

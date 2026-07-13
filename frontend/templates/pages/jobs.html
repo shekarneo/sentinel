@@ -1,0 +1,86 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="jobsPage()" x-init="load()">
+  <div class="alert alert-secondary mb-4">
+    Jobs are scaffolded only. Tasks can be queued via the API, but background worker execution is disabled.
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">Queued</div>
+          <div class="metric-value" x-text="summary.queued ?? 0"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">Running</div>
+          <div class="metric-value" x-text="summary.running ?? 0"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">Completed</div>
+          <div class="metric-value text-success" x-text="summary.completed ?? 0"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">Failed</div>
+          <div class="metric-value text-danger" x-text="summary.failed ?? 0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <span>Job Queue</span>
+      <button class="btn btn-sm btn-outline-light" @click="load()">Refresh</button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Type</th>
+              <th>State</th>
+              <th>Priority</th>
+              <th>Created</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="job in jobs" :key="job.id">
+              <tr>
+                <td class="small text-secondary" x-text="job.id.slice(0, 8) + '…'"></td>
+                <td x-text="job.task_type"></td>
+                <td><span class="badge" :class="stateBadge(job.state)" x-text="job.state"></span></td>
+                <td x-text="job.priority"></td>
+                <td class="small text-secondary" x-text="formatWhen(job.created_at)"></td>
+                <td class="small text-secondary" x-text="job.source"></td>
+              </tr>
+            </template>
+            <tr x-show="jobs.length === 0">
+              <td colspan="6" class="text-secondary text-center py-4">No jobs queued yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/jobs.js"></script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="configurationPage()" x-init="load()">
+  <div class="alert alert-secondary">
+    Configuration is read-only in Phase 1. Editing will be enabled in a future release.
+  </div>
+
+  <div class="row g-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">models.yaml</div>
+        <div class="card-body p-0">
+          <pre class="code-block m-0" x-text="files.models_yaml || 'Loading...'"></pre>
+        </div>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">thresholds.yaml</div>
+        <div class="card-body p-0">
+          <pre class="code-block m-0" x-text="files.thresholds_yaml || 'Loading...'"></pre>
+        </div>
+      </div>
+    </div>
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">pipeline_profiles.yaml</div>
+        <div class="card-body p-0">
+          <pre class="code-block m-0" x-text="files.pipeline_profiles_yaml || 'Loading...'"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

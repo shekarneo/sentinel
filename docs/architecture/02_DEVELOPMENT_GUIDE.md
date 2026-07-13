@@ -522,13 +522,32 @@ No code changes should be required after calibration.
 
 ### 7. Frontend
 
--   Gradio
+-   Web Console (future) — integrates through REST API only
 -   Investigation Dashboard
 -   Enrollment UI
 -   Verification UI
 -   Camera Dashboard
 
-### 8. Deployment (Optional)
+**Integration rule:** The backend is frontend-agnostic. Any frontend
+(HTMX, React, Flutter, Electron, CLI, REST client) must integrate
+exclusively through the REST API under `/api/v1/`. See
+`docs/architecture/03_API_ARCHITECTURE.md`.
+
+### 8. REST API Layer
+
+-   FastAPI application (`backend/api/`)
+-   Versioned routes (`/api/v1/`)
+-   Application service dependency injection
+-   Request/response DTOs (no direct domain model exposure)
+-   OpenAPI documentation
+
+Service boundary:
+
+```
+API routes → Application Services → Pipeline / AI orchestrators
+```
+
+### 9. Deployment (Optional)
 
 -   Docker Compose
 -   Monitoring

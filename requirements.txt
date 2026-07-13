@@ -7,6 +7,11 @@ PyYAML==6.0.3
 scikit-image==0.25.2
 faiss-cpu==1.14.3
 pytest==9.0.3
+fastapi==0.115.12
+uvicorn==0.34.2
+python-multipart==0.0.20
+jinja2==3.1.6
+httpx==0.28.1
 
 # Dependency notes:
 # - opencv-python: image I/O, face warping, visualization scripts
@@ -15,7 +20,7 @@ pytest==9.0.3
 # - faiss-cpu: gallery vector search (IndexFlatIP / cosine via inner product)
 # - pydantic + PyYAML: configuration validation and loading
 # - pytest: automated unit and integration tests in tests/
+# - fastapi + uvicorn + python-multipart: REST API layer
 
 # Optional / not yet required:
-# - fastapi, uvicorn: API layer (planned)
 # - postgresql, redis: persistence layer (planned)

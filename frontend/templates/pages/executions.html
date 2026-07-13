@@ -1,0 +1,151 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="executionsPage()" x-init="load()">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Recent Runs</span>
+          <button class="btn btn-sm btn-outline-light" @click="load()">Refresh</button>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            <template x-for="item in executions" :key="item.id">
+              <button
+                type="button"
+                class="list-group-item list-group-item-action bg-transparent text-start"
+                :class="{ active: selected?.id === item.id }"
+                @click="select(item.id)"
+              >
+                <div class="d-flex justify-content-between align-items-center">
+                  <strong x-text="item.profile"></strong>
+                  <span class="badge" :class="statusBadge(item.status)" x-text="item.status"></span>
+                </div>
+                <div class="small text-secondary" x-text="`${item.duration_ms} ms · ${item.face_count} face(s)`"></div>
+                <div class="small text-secondary" x-text="formatWhen(item.started_at)"></div>
+                <div class="small text-secondary" x-text="item.source"></div>
+              </button>
+            </template>
+            <div class="list-group-item bg-transparent text-secondary small" x-show="executions.length === 0">
+              No executions recorded yet. Run recognition to populate history.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8" x-show="selected" x-cloak>
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between">
+          <span>Pipeline Timeline</span>
+          <span class="badge text-bg-info" x-text="`${selected.duration_ms} ms total`"></span>
+        </div>
+        <div class="card-body">
+          <div class="timeline-track">
+            <template x-for="stage in selected.stages" :key="stage.stage">
+              <div class="timeline-node">
+                <div class="d-flex justify-content-between">
+                  <div class="timeline-label" x-text="stage.label"></div>
+                  <span class="badge" :class="statusBadge(stage.status)" x-text="stage.status"></span>
+                </div>
+                <div class="timeline-bar-wrap">
+                  <div class="timeline-bar" :style="`width: ${stageWidth(stage.duration_ms)}%`"></div>
+                </div>
+                <div class="timeline-value" x-text="`${stage.duration_ms} ms`"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-4" x-show="selected.errors?.length">
+        <div class="card-header text-danger">Failure Details</div>
+        <div class="card-body">
+          <template x-for="(error, index) in selected.errors" :key="index">
+            <div class="alert alert-danger mb-2" x-text="error"></div>
+          </template>
+          <template x-for="stage in failedStages()" :key="stage.stage">
+            <div class="border rounded p-3 mb-2 small">
+              <div class="fw-semibold" x-text="`${stage.label} (${stage.stage})`"></div>
+              <template x-for="(error, index) in stage.errors" :key="index">
+                <div class="text-danger" x-text="error"></div>
+              </template>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header">Stage Metrics</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 small">
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Status</th>
+                  <th>Duration</th>
+                  <th>Warnings</th>
+                  <th>Errors</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="stage in selected.stages" :key="stage.stage">
+                  <tr>
+                    <td x-text="stage.label"></td>
+                    <td><span class="badge" :class="statusBadge(stage.status)" x-text="stage.status"></span></td>
+                    <td x-text="`${stage.duration_ms} ms`"></td>
+                    <td x-text="stage.warnings.length"></td>
+                    <td x-text="stage.errors.length"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Pipeline Events</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-dark table-sm mb-0 small">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Event</th>
+                  <th>Stage</th>
+                  <th>Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(event, index) in selected.events" :key="index">
+                  <tr>
+                    <td x-text="formatWhen(event.timestamp)"></td>
+                    <td x-text="event.event_type"></td>
+                    <td x-text="event.stage || '—'"></td>
+                    <td x-text="event.message || '—'"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8" x-show="!selected" x-cloak>
+      <div class="card">
+        <div class="card-body text-secondary">
+          Select a recent run to inspect the pipeline timeline, stage metrics, and failure details.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/executions.js"></script>
+{% endblock %}

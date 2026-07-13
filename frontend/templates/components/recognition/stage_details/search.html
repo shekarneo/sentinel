@@ -1,0 +1,27 @@
+{% if stage.details.results %}
+<div class="small text-secondary mb-2">
+  Provider: {{ stage.details.provider }} · Latency: {{ "%.1f"|format(stage.details.search_time_ms) }} ms
+</div>
+<div class="table-responsive">
+  <table class="table table-sm table-dark mb-0">
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Identity</th>
+        <th>Similarity</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for candidate in stage.details.results %}
+      <tr>
+        <td>{{ candidate.rank }}</td>
+        <td>{{ candidate.identity_id }}</td>
+        <td>{{ "%.4f"|format(candidate.score) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-secondary small">No search candidates returned.</div>
+{% endif %}

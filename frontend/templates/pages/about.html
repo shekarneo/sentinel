@@ -1,0 +1,33 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">Sentinel Biometric Platform</div>
+      <div class="card-body">
+        <p>
+          Sentinel is an open-source biometric intelligence platform for surveillance and
+          identity verification. The management console is a server-rendered web application
+          built with FastAPI, Jinja2, HTMX, Alpine.js, and Bootstrap 5.
+        </p>
+        <p class="mb-0">
+          All biometric operations are executed through the versioned REST API at
+          <code>/api/v1/</code>. The console does not import or invoke AI modules directly.
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">Technology Stack</div>
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item bg-transparent">FastAPI + Jinja2</li>
+        <li class="list-group-item bg-transparent">HTMX + Alpine.js</li>
+        <li class="list-group-item bg-transparent">Bootstrap 5 (dark theme)</li>
+        <li class="list-group-item bg-transparent">REST API integration only</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

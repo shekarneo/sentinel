@@ -1,0 +1,61 @@
+<div class="image-viewer card mb-4">
+  <div class="card-header">Image Viewer</div>
+  <div class="card-body">
+    <div class="viewer-flow mb-3">
+      <span class="viewer-step">Original image</span>
+      <span class="viewer-arrow">↓</span>
+      <span class="viewer-step">Bounding boxes</span>
+      <span class="viewer-arrow">↓</span>
+      <span class="viewer-step">Detected thumbnails</span>
+      <span class="viewer-arrow">↓</span>
+      <span class="viewer-step">Aligned thumbnails</span>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <div class="section-title">Original + Detections</div>
+        <div class="preview-box">
+          <canvas
+            data-detect-canvas
+            data-source-image="data:image/jpeg;base64,{{ original_image_base64 }}"
+            data-boxes='{{ bounding_boxes | tojson }}'
+            class="w-100 rounded"
+          ></canvas>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="section-title">Side-by-side Crops</div>
+        <div class="row g-3">
+          {% for face in faces %}
+          <div class="col-md-6">
+            <div class="border rounded p-2 h-100">
+              <div class="small text-secondary mb-2">Face {{ loop.index }}</div>
+              <div class="row g-2">
+                <div class="col-6">
+                  <div class="tiny-label">Detected</div>
+                  <canvas
+                    data-crop-face
+                    data-source-image="data:image/jpeg;base64,{{ original_image_base64 }}"
+                    data-box='{{ face.bounding_box | tojson }}'
+                    class="w-100 rounded viewer-thumb"
+                  ></canvas>
+                </div>
+                <div class="col-6">
+                  <div class="tiny-label">Aligned</div>
+                  <div class="viewer-thumb-wrap">
+                    {% if face.aligned_image_base64 %}
+                    <img src="data:image/jpeg;base64,{{ face.aligned_image_base64 }}" class="viewer-thumb rounded" alt="Aligned {{ loop.index }}">
+                    {% else %}
+                    <div class="text-secondary small">N/A</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

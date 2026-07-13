@@ -1,0 +1,36 @@
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Debug Panel</span>
+    <button type="button" class="btn btn-sm btn-outline-light" data-debug-toggle>Toggle</button>
+  </div>
+  <div id="recognition-debug-panel" class="card-body d-none">
+    <div class="row g-3 small">
+      <div class="col-md-6">
+        <div class="section-title">Pipeline Profile</div>
+        <dl class="mb-0">
+          <dt>Profile</dt><dd>{{ debug.profile }}</dd>
+          {% if debug.profile_config %}
+          <dt>Stages</dt><dd>{{ debug.profile_config.stages | join(" → ") }}</dd>
+          <dt>Search</dt><dd>{{ "enabled" if debug.profile_config.search.enabled else "disabled" }}{% if debug.profile_config.search.top_k %} (top_k={{ debug.profile_config.search.top_k }}){% endif %}</dd>
+          {% endif %}
+        </dl>
+      </div>
+      <div class="col-md-6">
+        <div class="section-title">Runtime</div>
+        <dl class="mb-0">
+          <dt>API latency</dt><dd>{{ debug.api_latency_ms }} ms</dd>
+          <dt>App version</dt><dd>{{ debug.app.version or "—" }}</dd>
+          <dt>Metadata keys</dt><dd>{{ debug.metadata_keys | join(", ") if debug.metadata_keys else "—" }}</dd>
+        </dl>
+      </div>
+      <div class="col-12">
+        <div class="section-title">Thresholds (excerpt)</div>
+        <pre class="code-block mb-0">{{ debug.thresholds_excerpt or "Unavailable" }}</pre>
+      </div>
+      <div class="col-12">
+        <div class="section-title">Model Configuration</div>
+        <pre class="code-block mb-0">{{ debug.models_yaml or "Unavailable" }}</pre>
+      </div>
+    </div>
+  </div>
+</div>

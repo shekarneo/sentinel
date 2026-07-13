@@ -1,0 +1,30 @@
+<div class="pipeline-visualizer card mb-4">
+  <div class="card-header">Pipeline Stages</div>
+  <div class="card-body">
+    {% for stage in stages %}
+    <div class="pipeline-stage-card card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+          <div>
+            <div class="fw-semibold">{{ stage.label }}</div>
+            <div class="small text-secondary">{{ stage.summary }}</div>
+          </div>
+          <div class="text-end">
+            <span class="badge {{ stage.badge_class }}">{{ stage.badge_label }}</span>
+            <div class="small text-secondary mt-1">{{ stage.time_ms }} ms</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-light mt-3" data-stage-toggle="stage-details-{{ stage.key }}">
+          Details
+        </button>
+        <div id="stage-details-{{ stage.key }}" class="stage-details mt-3 d-none">
+          {% include "components/recognition/stage_details/" ~ stage.key ~ ".html" %}
+        </div>
+      </div>
+    </div>
+    {% if not loop.last %}
+    <div class="pipeline-arrow text-center text-secondary mb-3">↓</div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>

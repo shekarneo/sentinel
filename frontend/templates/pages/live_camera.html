@@ -1,0 +1,175 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="liveCameraPage()" x-init="init()">
+  <div class="alert alert-secondary mb-4">
+    Live Camera uses browser webcam capture and routes each processed frame through
+  <code>RecognitionService</code>. RTSP, tracking, and fraud detection hooks are reserved.
+  </div>
+
+  <div class="row g-4">
+    <div class="col-xl-3 col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header">Session Controls</div>
+        <div class="card-body d-grid gap-2">
+          <button class="btn btn-primary" @click="startSession()" :disabled="sessionActive">Start</button>
+          <button class="btn btn-outline-warning" @click="pauseSession()" :disabled="!sessionActive || status === 'paused'">Pause</button>
+          <button class="btn btn-outline-success" @click="resumeSession()" :disabled="status !== 'paused'">Resume</button>
+          <button class="btn btn-outline-danger" @click="stopSession()" :disabled="!sessionActive">Stop</button>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header">Configuration</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Camera Index</label>
+            <input type="number" class="form-control" min="0" x-model.number="config.camera_index">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Width</label>
+              <input type="number" class="form-control" min="160" x-model.number="config.resolution_width">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Height</label>
+              <input type="number" class="form-control" min="120" x-model.number="config.resolution_height">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Target FPS</label>
+            <input type="number" class="form-control" min="1" max="60" x-model.number="config.target_fps">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Pipeline Profile</label>
+            <select class="form-select" x-model="config.pipeline_profile">
+              <option value="surveillance">surveillance</option>
+              <option value="access_control">access_control</option>
+              <option value="attendance">attendance</option>
+              <option value="kyc">kyc</option>
+              <option value="search">search</option>
+            </select>
+          </div>
+          <div class="mb-3 form-check">
+            <input class="form-check-input" type="checkbox" id="overlay-enabled" x-model="config.overlay_enabled">
+            <label class="form-check-label" for="overlay-enabled">Overlay Enabled</label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Submission Interval (ms)</label>
+            <input type="number" class="form-control" min="50" x-model.number="config.submission_interval_ms">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Recognition Policy</label>
+            <select class="form-select" x-model="config.recognition_policy.policy_type">
+              <option value="every_frame">every_frame</option>
+              <option value="every_n_frames">every_n_frames</option>
+              <option value="adaptive" disabled>adaptive (reserved)</option>
+              <option value="tracker_assisted" disabled>tracker_assisted (reserved)</option>
+              <option value="motion_triggered" disabled>motion_triggered (reserved)</option>
+            </select>
+          </div>
+          <div class="mb-0">
+            <label class="form-label">Frame Interval</label>
+            <input type="number" class="form-control" min="1" x-model.number="config.recognition_policy.frame_interval">
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Performance</div>
+        <div class="card-body small">
+          <div class="d-flex justify-content-between mb-2"><span>Capture FPS</span><strong x-text="metrics.capture_fps ?? 0"></strong></div>
+          <div class="d-flex justify-content-between mb-2"><span>Processing FPS</span><strong x-text="metrics.processing_fps ?? 0"></strong></div>
+          <div class="d-flex justify-content-between mb-2"><span>Pipeline Latency</span><strong x-text="`${metrics.pipeline_latency_ms ?? 0} ms`"></strong></div>
+          <div class="d-flex justify-content-between mb-2"><span>Average Latency</span><strong x-text="`${metrics.average_latency_ms ?? 0} ms`"></strong></div>
+          <div class="d-flex justify-content-between mb-2"><span>Dropped Frames</span><strong x-text="metrics.dropped_frames ?? 0"></strong></div>
+          <div class="d-flex justify-content-between"><span>Recognition Rate</span><strong x-text="metrics.recognition_rate ?? 0"></strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-6 col-lg-5">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Webcam</span>
+          <span class="badge text-bg-secondary" x-text="status || 'idle'"></span>
+        </div>
+        <div class="card-body p-0 position-relative bg-black">
+          <video id="live-video" class="w-100" autoplay playsinline muted></video>
+          <canvas id="live-overlay-canvas" class="position-absolute top-0 start-0 w-100 h-100"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Recognition Results</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Identity</th>
+                  <th>Similarity</th>
+                  <th>Decision</th>
+                  <th>Confidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="(face, index) in overlayFaces" :key="index">
+                  <tr>
+                    <td x-text="face.identity_id || 'unknown'"></td>
+                    <td x-text="face.similarity ?? '—'"></td>
+                    <td x-text="face.verification_decision || '—'"></td>
+                    <td x-text="face.confidence?.toFixed?.(3) ?? face.confidence"></td>
+                  </tr>
+                </template>
+                <tr x-show="overlayFaces.length === 0">
+                  <td colspan="4" class="text-secondary text-center py-4">No faces detected yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-lg-3">
+      <div class="card mb-4">
+        <div class="card-header">Session Status</div>
+        <div class="card-body small">
+          <div class="mb-2"><span class="text-secondary">Session ID</span><div x-text="sessionId ? sessionId.slice(0, 8) + '…' : '—'"></div></div>
+          <div class="mb-2"><span class="text-secondary">Pipeline Profile</span><div x-text="config.pipeline_profile"></div></div>
+          <div class="mb-2"><span class="text-secondary">Detected Faces</span><div x-text="overlay?.face_count ?? 0"></div></div>
+          <div class="mb-2"><span class="text-secondary">Pipeline Time</span><div x-text="`${overlay?.pipeline_time_ms ?? 0} ms`"></div></div>
+          <div><span class="text-secondary">Processed Frames</span><div x-text="processedFrames"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Recognition Timeline</div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            <template x-for="(entry, index) in timeline" :key="index">
+              <div class="list-group-item bg-transparent">
+                <div class="d-flex justify-content-between">
+                  <strong x-text="`${entry.face_count} face(s)`"></strong>
+                  <span class="small text-secondary" x-text="`${entry.pipeline_time_ms} ms`"></span>
+                </div>
+                <div class="small text-secondary" x-text="formatWhen(entry.timestamp)"></div>
+                <div class="small" x-text="entry.recognized_identities?.join(', ') || 'No matches'"></div>
+              </div>
+            </template>
+            <div class="list-group-item bg-transparent text-secondary small" x-show="timeline.length === 0">
+              Start a session to populate the timeline.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/live_overlay.js"></script>
+<script src="/static/js/live_camera.js"></script>
+{% endblock %}

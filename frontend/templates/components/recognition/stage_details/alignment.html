@@ -1,0 +1,14 @@
+<div class="row g-3">
+  {% for face in stage.details.faces %}
+  <div class="col-md-4">
+    <div class="border rounded p-2">
+      <div class="small text-secondary mb-2">Face {{ loop.index }} · quality: {{ face.quality }}</div>
+      {% if face.aligned_image_base64 %}
+      <img src="data:image/jpeg;base64,{{ face.aligned_image_base64 }}" class="img-fluid rounded" alt="Aligned face {{ loop.index }}">
+      {% else %}
+      <div class="text-secondary small">Aligned thumbnail unavailable</div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>

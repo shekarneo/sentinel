@@ -1,0 +1,119 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="dashboardPage()" x-init="load()">
+  <div class="row g-4">
+    <div class="col-xl-3 col-md-6">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">System Health</div>
+          <div class="metric-value text-success" x-text="data.status || '—'"></div>
+          <div class="metric-sub" x-text="data.environment || ''"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">API Version</div>
+          <div class="metric-value" x-text="data.api_version || '—'"></div>
+          <div class="metric-sub" x-text="data.app_version || ''"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">Gallery Size</div>
+          <div class="metric-value" x-text="data.gallery_size ?? '—'"></div>
+          <div class="metric-sub">Enrolled identities</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6">
+      <div class="card metric-card h-100">
+        <div class="card-body">
+          <div class="metric-label">Search Index</div>
+          <div class="metric-value" x-text="data.search_index_status || '—'"></div>
+          <div class="metric-sub" x-text="`${data.search_index_vector_count || 0} vectors`"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mt-1">
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Loaded Models</div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Model</th>
+                  <th>Path</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="model in data.models || []" :key="model.name">
+                  <tr>
+                    <td x-text="model.name"></td>
+                    <td class="text-secondary small" x-text="model.path"></td>
+                    <td><span class="badge text-bg-primary" x-text="model.status"></span></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">Recognition Summary</div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <template x-for="(value, key) in data.recognition_summary || {}" :key="key">
+              <dt class="col-sm-5 text-secondary" x-text="key.replaceAll('_', ' ')"></dt>
+              <dd class="col-sm-7" x-text="value"></dd>
+            </template>
+          </dl>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-4">
+    <div class="card-header">Pipeline Profiles</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Profile</th>
+              <th>Stages</th>
+              <th>Search</th>
+              <th>Top-K</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="profile in data.pipeline_profiles || []" :key="profile.name">
+              <tr>
+                <td x-text="profile.name"></td>
+                <td class="small text-secondary" x-text="profile.stages.join(' → ')"></td>
+                <td>
+                  <span class="badge" :class="profile.search_enabled ? 'text-bg-success' : 'text-bg-secondary'"
+                        x-text="profile.search_enabled ? 'Enabled' : 'Disabled'"></span>
+                </td>
+                <td x-text="profile.search_top_k ?? '—'"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="galleryPage()" x-init="loadGallery()">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <span class="text-secondary">Total identities:</span>
+      <strong x-text="entries.length"></strong>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline-light btn-sm" @click="loadGallery()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+      <button class="btn btn-outline-warning btn-sm" @click="rebuildGallery()">
+        Rebuild Index
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Identity</th>
+              <th>Name</th>
+              <th>Employee ID</th>
+              <th>Enrollment Count</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="entry in entries" :key="entry.identity_id">
+              <tr>
+                <td x-text="entry.identity_id"></td>
+                <td x-text="entry.metadata?.name || '—'"></td>
+                <td x-text="entry.metadata?.employee_id || entry.identity_id"></td>
+                <td x-text="entry.enrollment_count"></td>
+                <td class="text-end">
+                  <a class="btn btn-sm btn-outline-primary" :href="`/recognition?identity=${entry.identity_id}`">
+                    Search
+                  </a>
+                  <button class="btn btn-sm btn-outline-danger" @click="deleteIdentity(entry.identity_id)">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            </template>
+            <tr x-show="entries.length === 0">
+              <td colspan="5" class="text-secondary text-center py-4">No identities enrolled.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

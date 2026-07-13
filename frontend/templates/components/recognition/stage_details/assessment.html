@@ -1,0 +1,14 @@
+{% for assessment in stage.details.faces %}
+<div class="border rounded p-3 mb-2 small">
+  <div class="row g-2">
+    <div class="col-md-4"><strong>Blur</strong><br>{{ assessment.blur_score if assessment.blur_score is not none else "—" }}</div>
+    <div class="col-md-4"><strong>Brightness</strong><br>{{ assessment.brightness_score if assessment.brightness_score is not none else "—" }}</div>
+    <div class="col-md-4"><strong>Pose</strong><br>{{ assessment.pose_score if assessment.pose_score is not none else "—" }}</div>
+    <div class="col-md-4"><strong>Visibility</strong><br>{{ assessment.visibility_score if assessment.visibility_score is not none else "—" }}</div>
+    <div class="col-md-4"><strong>Overall</strong><br>{{ assessment.overall_score if assessment.overall_score is not none else "—" }}</div>
+    <div class="col-md-4"><strong>Acceptable</strong><br>{{ assessment.is_acceptable if assessment.is_acceptable is not none else "—" }}</div>
+  </div>
+</div>
+{% else %}
+<div class="text-secondary small">Assessment not available for this profile.</div>
+{% endfor %}

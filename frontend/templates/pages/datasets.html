@@ -1,0 +1,125 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="datasetsPage()" x-init="load()">
+  <div class="alert alert-secondary mb-4">
+    Dataset Processing is scaffolded only. Jobs queue execution tasks but background workers are disabled.
+  </div>
+
+  <div class="row g-4">
+    <div class="col-xl-4 col-lg-5">
+      <div class="card mb-4">
+        <div class="card-header">Process Dataset</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Dataset Type</label>
+            <select class="form-select" x-model="form.dataset_type">
+              <option value="image_folder">image_folder</option>
+              <option value="zip_archive">zip_archive</option>
+              <option value="csv_manifest">csv_manifest</option>
+              <option value="coco_dataset">coco_dataset</option>
+              <option value="gallery_export">gallery_export</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Operation</label>
+            <select class="form-select" x-model="form.operation">
+              <option value="recognition">recognition</option>
+              <option value="enrollment">enrollment</option>
+              <option value="gallery_import">gallery_import</option>
+              <option value="benchmark">benchmark</option>
+              <option value="model_evaluation">model_evaluation</option>
+              <option value="dataset_validation">dataset_validation</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Source Path</label>
+            <input type="text" class="form-control" x-model="form.source_path" placeholder="/data/faces">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Scaffold Item Count</label>
+            <input type="number" class="form-control" min="0" x-model.number="form.item_count">
+          </div>
+          <button class="btn btn-primary w-100" @click="submitJob()">Queue Dataset Job</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">Summary</div>
+        <div class="card-body small">
+          <div class="d-flex justify-content-between mb-2"><span>Total Jobs</span><strong x-text="jobs.length"></strong></div>
+          <div class="d-flex justify-content-between mb-2"><span>Processed Items</span><strong x-text="selectedJob?.summary?.processed_items ?? 0"></strong></div>
+          <div class="d-flex justify-content-between mb-2"><span>Failed Items</span><strong x-text="selectedJob?.summary?.failed_items ?? 0"></strong></div>
+          <div class="d-flex justify-content-between"><span>Execution Time</span><strong x-text="`${selectedJob?.summary?.execution_time_ms ?? 0} ms`"></strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-8 col-lg-7">
+      <div class="row g-3 mb-4">
+        <div class="col-md-3">
+          <div class="card metric-card h-100"><div class="card-body"><div class="metric-label">Progress</div><div class="metric-value" x-text="progressLabel()"></div></div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card metric-card h-100"><div class="card-body"><div class="metric-label">Processed</div><div class="metric-value text-success" x-text="selectedJob?.summary?.processed_items ?? 0"></div></div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card metric-card h-100"><div class="card-body"><div class="metric-label">Failed</div><div class="metric-value text-danger" x-text="selectedJob?.summary?.failed_items ?? 0"></div></div></div>
+        </div>
+        <div class="col-md-3">
+          <div class="card metric-card h-100"><div class="card-body"><div class="metric-label">Export</div><div class="metric-value small" x-text="selectedJob?.export_path ? 'Ready' : 'Pending'"></div></div></div>
+        </div>
+      </div>
+
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Dataset Jobs</span>
+          <button class="btn btn-sm btn-outline-light" @click="load()">Refresh</button>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Dataset</th>
+                  <th>Operation</th>
+                  <th>Status</th>
+                  <th>Processed</th>
+                  <th>Failed</th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="job in jobs" :key="job.id">
+                  <tr @click="selectJob(job)" style="cursor: pointer;" :class="{ 'table-active': selectedJob?.id === job.id }">
+                    <td class="small text-secondary" x-text="job.id.slice(0, 8) + '…'"></td>
+                    <td x-text="job.dataset_type"></td>
+                    <td x-text="job.operation"></td>
+                    <td><span class="badge text-bg-secondary" x-text="job.status"></span></td>
+                    <td x-text="job.summary.processed_items"></td>
+                    <td x-text="job.summary.failed_items"></td>
+                  </tr>
+                </template>
+                <tr x-show="jobs.length === 0">
+                  <td colspan="6" class="text-secondary text-center py-4">No dataset jobs yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" x-show="results">
+        <div class="card-header">Results</div>
+        <div class="card-body">
+          <pre class="small text-secondary mb-0" x-text="JSON.stringify(results, null, 2)"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/datasets.js"></script>
+{% endblock %}

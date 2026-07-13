@@ -1,0 +1,52 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="enrollmentPage()">
+  <div class="row g-4">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-header">Enroll Identity</div>
+        <div class="card-body">
+          <form @submit.prevent="submitEnrollment()">
+            <div class="mb-3">
+              <label class="form-label">Identity Name</label>
+              <input type="text" class="form-control" x-model="identityName" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Employee ID</label>
+              <input type="text" class="form-control" x-model="employeeId" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Enrollment Image</label>
+              <input type="file" class="form-control" accept="image/*" @change="onImageSelected($event)" required>
+            </div>
+            <div class="preview-box mb-3" x-show="previewUrl">
+              <img :src="previewUrl" alt="Enrollment preview" class="img-fluid rounded">
+            </div>
+            <button class="btn btn-primary w-100" type="submit" :disabled="!selectedFile">Enroll via API</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card h-100">
+        <div class="card-header">Enrollment Result</div>
+        <div class="card-body">
+          <template x-if="result">
+            <div class="alert" :class="result.success ? 'alert-success' : 'alert-danger'">
+              <div class="fw-semibold" x-text="result.message"></div>
+              <template x-if="result.success">
+                <dl class="mb-0 mt-3 small">
+                  <dt>Identity ID</dt><dd x-text="result.identity_id"></dd>
+                  <dt>Embedding ID</dt><dd x-text="result.embedding_id"></dd>
+                </dl>
+              </template>
+            </div>
+          </template>
+          <div x-show="!result" class="text-secondary">Submit an enrollment request to see results.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

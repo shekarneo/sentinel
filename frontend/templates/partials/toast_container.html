@@ -1,0 +1,11 @@
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+  <template x-for="toast in $store.console.toasts" :key="toast.id">
+    <div class="toast show mb-2" role="alert">
+      <div class="toast-header">
+        <strong class="me-auto" x-text="toast.title"></strong>
+        <button type="button" class="btn-close" @click="$store.console.removeToast(toast.id)"></button>
+      </div>
+      <div class="toast-body" x-text="toast.message"></div>
+    </div>
+  </template>
+</div>

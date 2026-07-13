@@ -1,0 +1,87 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="recognitionHistoryPage()" x-init="refreshHistory()" @recognition:history-updated.window="refreshHistory()">
+  <div class="row g-4">
+    <div class="col-xl-3 col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header">Probe Image</div>
+        <div class="card-body">
+          <form
+            hx-post="/partials/recognition/run"
+            hx-target="#recognition-results"
+            hx-swap="innerHTML"
+            hx-indicator="#recognition-loading"
+            enctype="multipart/form-data"
+          >
+            <div class="mb-3">
+              <label class="form-label">Pipeline Profile</label>
+              <select class="form-select" name="profile">
+                <option value="kyc" selected>kyc</option>
+                <option value="search">search</option>
+                <option value="access_control">access_control</option>
+                <option value="attendance">attendance</option>
+                <option value="surveillance">surveillance</option>
+                <option value="enrollment">enrollment</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Image</label>
+              <input type="file" class="form-control" name="image" accept="image/*" required>
+            </div>
+            <button class="btn btn-primary w-100" type="submit">Run Pipeline</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Recognition History</span>
+          <span class="badge text-bg-secondary" x-text="history.length"></span>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            <template x-for="entry in history" :key="entry.id">
+              <button
+                type="button"
+                class="list-group-item list-group-item-action bg-transparent text-start"
+                :class="{ active: selectedId === entry.id }"
+                @click="replay(entry.id)"
+              >
+                <div class="d-flex justify-content-between">
+                  <strong x-text="entry.profile"></strong>
+                  <span class="small text-secondary" x-text="`${entry.total_ms} ms`"></span>
+                </div>
+                <div class="small text-secondary" x-text="`${entry.face_count} face(s)`"></div>
+                <div class="small text-secondary" x-text="formatWhen(entry.timestamp)"></div>
+              </button>
+            </template>
+            <div class="list-group-item bg-transparent text-secondary small" x-show="history.length === 0">
+              No runs yet. Execute recognition to populate history.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-9 col-lg-8">
+      <div id="recognition-loading" class="htmx-indicator">
+        {% include "components/recognition/loading.html" %}
+      </div>
+      <div id="recognition-results">
+        <div class="card">
+          <div class="card-body text-secondary">
+            Upload an image and run the pipeline to visualize detection, alignment, assessment,
+            embedding, search, and verification stages.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/recognition_history.js"></script>
+<script src="/static/js/recognition_pipeline.js"></script>
+{% endblock %}

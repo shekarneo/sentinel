@@ -1,0 +1,49 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div x-data="benchmarkPage()">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">Benchmark Run</div>
+        <div class="card-body">
+          <form @submit.prevent="runBenchmark()">
+            <div class="mb-3">
+              <label class="form-label">Profile</label>
+              <select class="form-select" x-model="profile">
+                <option value="search">search</option>
+                <option value="kyc">kyc</option>
+                <option value="access_control">access_control</option>
+                <option value="attendance">attendance</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Iterations</label>
+              <input type="number" class="form-control" min="1" max="10" x-model.number="iterations">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Image</label>
+              <input type="file" class="form-control" accept="image/*" @change="onImageSelected($event)" required>
+            </div>
+            <button class="btn btn-primary w-100" type="submit" :disabled="!selectedFile">Run Benchmark</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8" x-show="timings" x-cloak>
+      <div class="row g-3">
+        <div class="col-md-6" x-show="timings">
+          <div class="card metric-card"><div class="card-body"><div class="metric-label">Detection</div><div class="metric-value" x-text="formatMs(timings.detection_time_ms)"></div></div></div>
+        </div>
+        <div class="col-md-6"><div class="card metric-card"><div class="card-body"><div class="metric-label">Alignment</div><div class="metric-value" x-text="formatMs(timings.alignment_time_ms)"></div></div></div></div>
+        <div class="col-md-6"><div class="card metric-card"><div class="card-body"><div class="metric-label">Assessment</div><div class="metric-value" x-text="formatMs(timings.assessment_time_ms)"></div></div></div></div>
+        <div class="col-md-6"><div class="card metric-card"><div class="card-body"><div class="metric-label">Embedding</div><div class="metric-value" x-text="formatMs(timings.embedding_time_ms)"></div></div></div></div>
+        <div class="col-md-6"><div class="card metric-card"><div class="card-body"><div class="metric-label">Search</div><div class="metric-value" x-text="formatMs(timings.search_time_ms)"></div></div></div></div>
+        <div class="col-md-6"><div class="card metric-card"><div class="card-body"><div class="metric-label">Verification</div><div class="metric-value" x-text="formatMs(timings.verification_time_ms)"></div></div></div></div>
+        <div class="col-12"><div class="card metric-card border-primary"><div class="card-body"><div class="metric-label">Total Pipeline Time</div><div class="metric-value text-primary" x-text="formatMs(timings.total_pipeline_time_ms)"></div></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

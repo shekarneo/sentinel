@@ -57,6 +57,12 @@ class IdentityService:
         """Return the number of enrolled gallery identities."""
         return self._repository.count()
 
+    @property
+    def index_vector_count(self) -> int:
+        """Return the number of vectors stored in the search index."""
+        self.load_gallery()
+        return self._index.count
+
     def initialize(self) -> None:
         """Load gallery assets and validate repository/index consistency.
 
@@ -154,6 +160,16 @@ class IdentityService:
         embedding_id = self._repository.remove(identity_id)
         self._index.remove(embedding_id)
         logger.debug("Deleted identity %s (embedding_id=%d).", identity_id, embedding_id)
+
+    def list_identities(self) -> list[str]:
+        """Return all enrolled identity identifiers."""
+        self.load_gallery()
+        return self._repository.list_identities()
+
+    def get_identity_metadata(self, identity_id: str) -> dict[str, Any] | None:
+        """Return optional metadata for an enrolled identity."""
+        self.load_gallery()
+        return self._repository.lookup_metadata(identity_id)
 
     def rebuild_gallery(self) -> None:
         """Rebuild the vector index from vectors currently stored in the index."""

@@ -1,0 +1,26 @@
+<dl class="row small mb-0">
+  <dt class="col-sm-4">Faces detected</dt>
+  <dd class="col-sm-8">{{ stage.details.face_count }}</dd>
+</dl>
+{% if stage.details.faces %}
+<div class="table-responsive mt-3">
+  <table class="table table-sm table-dark mb-0">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Confidence</th>
+        <th>Bounding box</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for face in stage.details.faces %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ "%.1f"|format(face.confidence * 100) }}%</td>
+        <td class="text-secondary">x={{ face.bounding_box.x|round(0) }}, y={{ face.bounding_box.y|round(0) }}, {{ face.bounding_box.width|round(0) }}×{{ face.bounding_box.height|round(0) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}

@@ -1,0 +1,12 @@
+{% if stage.details.decision %}
+<div class="row g-2 small">
+  <div class="col-md-4"><strong>Decision</strong><br>{{ stage.details.decision }}</div>
+  <div class="col-md-4"><strong>Threshold</strong><br>{{ stage.details.threshold }}</div>
+  <div class="col-md-4"><strong>Policy</strong><br>{{ stage.details.policy }}</div>
+  <div class="col-md-4"><strong>Similarity</strong><br>{{ "%.4f"|format(stage.details.similarity_score) }}</div>
+  <div class="col-md-4"><strong>Verified</strong><br>{{ stage.details.is_verified }}</div>
+  <div class="col-md-4"><strong>Matched ID</strong><br>{{ stage.details.matched_identity_id or "—" }}</div>
+</div>
+{% else %}
+<div class="text-secondary small">Verification not available for this profile.</div>
+{% endif %}
