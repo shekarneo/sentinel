@@ -128,11 +128,55 @@ Verification / Decision
 **Implementation roadmap**
 
 1.  Face Detection — **complete** (SCRFD, frozen)
-2.  Face Alignment
-3.  Face Assessment Engine
+2.  Face Alignment — **complete** (frozen)
+3.  Face Assessment Engine — **complete** (frozen)
 4.  Biometric Fraud Detection
 5.  Embedding Service
 6.  Decision Engine
+
+**Face Assessment architecture**
+
+```
+Face (with AlignmentData)
+  ↓
+Face Assessment
+  ↓
+AssessmentData
+  ↓
+Embedding
+```
+
+| Analyzer | Result model | Fields |
+| --- | --- | --- |
+| Blur | ``BlurResult`` | ``variance``, ``score`` |
+| Brightness | ``BrightnessResult`` | ``mean_brightness``, ``score`` |
+| Pose | ``PoseResult`` | ``yaw``, ``pitch``, ``roll``, ``score`` (heuristic quality indicators, not calibrated pose) |
+| Size | ``SizeResult`` | ``width``, ``height``, ``score`` |
+| Visibility | ``VisibilityResult`` | ``visible_ratio``, ``score`` |
+| Scoring | — | ``overall_score``, ``is_acceptable`` |
+
+``AssessmentData`` nests analyzer results under ``blur``, ``brightness``,
+``pose``, ``size``, and ``visibility``. Each analyzer owns one result model.
+``FaceAssessor`` combines them before attaching to ``Face.assessment``.
+
+Assessment enriches ``Face.assessment`` only. It never modifies detection,
+alignment, or embedding data.
+
+**Face Assessment Calibration**
+
+Assessment thresholds and scoring weights live in
+``configs/thresholds.yaml``. They are intentionally separated from
+implementation code.
+
+Recommended calibration workflow:
+
+1.  Collect aligned faces from representative deployment data.
+2.  Label face quality.
+3.  Run assessment metrics on the labeled set.
+4.  Analyze per-analyzer score distributions.
+5.  Update ``configs/thresholds.yaml``.
+
+No code changes should be required after calibration.
 
 **Module summary**
 
@@ -140,7 +184,7 @@ Verification / Decision
 | --- | --- | --- | --- |
 | Face Detection | Image | `list[Face]` | Detection fields only |
 | Face Alignment | `list[Face]` + image | `list[Face]` | `Face.alignment` |
-| Face Assessment | `list[Face]` | `list[Face]` | `Face.assessment` |
+| Face Assessment | `list[Face]` (aligned) | `list[Face]` | `Face.assessment` |
 | Biometric Fraud Detection | `list[Face]` | `list[Face]` | `Face.fraud` |
 | Embedding Service | `list[Face]` | `list[Face]` | `Face.embedding` |
 | Decision Engine | `list[Face]` + platform results | Decision | — |
@@ -150,7 +194,8 @@ Verification / Decision
 1.  Detection fields (``bounding_box``, ``confidence``, ``landmarks``)
     are immutable after SCRFD.
 2.  Each biometric module owns exactly one nested data model.
-3.  Modules populate only their own nested section on ``Face``.
+3.  Modules populate only their own nested section on ``Face``. Face
+    Assessment must not modify detection, alignment, or embedding fields.
 4.  ``SearchResult``, ``VerificationResult``, ``Identity``, ``Track``,
     and ``Gallery`` remain separate domain models and are not stored
     inside ``Face``.

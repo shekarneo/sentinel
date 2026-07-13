@@ -190,7 +190,9 @@ Verification / Decision
     | Embedding Service | ``EmbeddingData`` |
 
 3.  **Modules populate only their own section.** A module must not
-    modify another module's nested data.
+    modify another module's nested data. Face Assessment enriches
+    ``Face.assessment`` only and must not modify detection, alignment,
+    or embedding fields.
 
 4.  **Platform models remain separate.** ``SearchResult``,
     ``VerificationResult``, ``Identity``, ``Track``, and ``Gallery`` are
@@ -276,6 +278,18 @@ Evaluate whether an aligned face is suitable for biometric processing.
 Face Assessment operates on **aligned faces**, not raw detections.
 Alignment is performed upstream by the Face Alignment module.
 
+**Pipeline**
+
+```
+Face (with AlignmentData)
+  ↓
+Face Assessment
+  ↓
+AssessmentData
+  ↓
+Embedding
+```
+
 **Consumes**
 
 `list[Face]` where ``Face.alignment`` is populated
@@ -284,6 +298,54 @@ Alignment is performed upstream by the Face Alignment module.
 
 The same ``Face`` objects with ``Face.assessment`` populated
 (``AssessmentData``).
+
+Face Assessment enriches ``Face`` only. It must not modify detection,
+alignment, or embedding data.
+
+**Status:** Architecture frozen. Implementation complete.
+
+**Configuration**
+
+All assessment thresholds and scoring weights are loaded from
+``configs/thresholds.yaml``. Implementation modules must not define
+production threshold defaults.
+
+| Group | Configuration keys |
+| --- | --- |
+| Blur | ``assessment.blur.warning``, ``acceptable``, ``excellent`` |
+| Brightness | ``assessment.brightness.too_dark``, ``acceptable_low``, ``acceptable_high``, ``too_bright`` |
+| Pose | ``assessment.pose.max_yaw``, ``max_pitch``, ``max_roll`` |
+| Size | ``assessment.size.min_face_width``, ``min_face_height`` |
+| Visibility | ``assessment.visibility.minimum_visible_ratio`` |
+| Overall | ``assessment.overall.*_weight``, ``minimum_acceptable_score`` |
+
+**Analyzers**
+
+Each analyzer returns its own result model. ``FaceAssessor`` combines them
+into ``AssessmentData``.
+
+| Analyzer | Result model | Fields |
+| --- | --- | --- |
+| Blur | ``BlurResult`` | ``variance``, ``score`` |
+| Brightness | ``BrightnessResult`` | ``mean_brightness``, ``score`` |
+| Pose | ``PoseResult`` | ``yaw``, ``pitch``, ``roll``, ``score`` (heuristic quality indicators, not calibrated pose) |
+| Size | ``SizeResult`` | ``width``, ``height``, ``score`` |
+| Visibility | ``VisibilityResult`` | ``visible_ratio``, ``score`` |
+| Scoring | — | ``overall_score``, ``is_acceptable`` |
+
+**AssessmentData structure**
+
+``AssessmentData`` contains nested stage results:
+
+| Field | Type |
+| --- | --- |
+| ``blur`` | ``BlurResult \| None`` |
+| ``brightness`` | ``BrightnessResult \| None`` |
+| ``pose`` | ``PoseResult \| None`` |
+| ``size`` | ``SizeResult \| None`` |
+| ``visibility`` | ``VisibilityResult \| None`` |
+| ``overall_score`` | ``float \| None`` |
+| ``is_acceptable`` | ``bool \| None`` |
 
 **Responsibilities**
 
@@ -294,6 +356,24 @@ The same ``Face`` objects with ``Face.assessment`` populated
 -   Brightness / exposure
 -   Face attribute assessment (future)
 -   Occlusion detection (future)
+
+**Face Assessment Calibration**
+
+Assessment thresholds are configuration-driven. Threshold values are
+intentionally separated from implementation code so deployments can be
+tuned without modifying Python modules.
+
+Recommended calibration workflow:
+
+1.  Collect aligned faces from the target deployment environment.
+2.  Label face quality (acceptable / unacceptable) with domain experts.
+3.  Run assessment metrics on the labeled set.
+4.  Analyze score distributions per analyzer.
+5.  Update ``configs/thresholds.yaml`` with calibrated values.
+
+No code changes should be required after calibration. Restart the
+application or clear the in-process threshold cache in tests if
+configuration is reloaded at runtime.
 
 ### Biometric Fraud Detection
 

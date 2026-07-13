@@ -2,3 +2,30 @@ detection:
   scrfd:
     score_threshold: 0.5
     nms_iou_threshold: 0.4
+
+assessment:
+  blur:
+    warning: 50.0
+    acceptable: 90.0
+    excellent: 200.0
+  brightness:
+    too_dark: 20.0
+    acceptable_low: 40.0
+    acceptable_high: 220.0
+    too_bright: 240.0
+  pose:
+    max_yaw: 30.0
+    max_pitch: 30.0
+    max_roll: 40.0
+  size:
+    min_face_width: 80.0
+    min_face_height: 80.0
+  visibility:
+    minimum_visible_ratio: 0.85
+  overall:
+    blur_weight: 0.30
+    brightness_weight: 0.20
+    pose_weight: 0.20
+    visibility_weight: 0.15
+    size_weight: 0.15
+    minimum_acceptable_score: 0.70

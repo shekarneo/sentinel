@@ -40,3 +40,6 @@ models/**/*.trt
 # Generated outputs
 image_alignment_compare_*.jpg
 image_scrfd.jpg
+image_assessment_*.jpg
+assessment_*.jpg
+assessment_output/

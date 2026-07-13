@@ -8,7 +8,7 @@ application configuration from YAML files.
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from backend.app.core.constants import (
     DEFAULT_MODELS_FILE,
@@ -55,8 +55,71 @@ class DetectionThresholdSettings(BaseModel):
     scrfd: ScrfdThresholdSettings = ScrfdThresholdSettings()
 
 
+class BlurThresholdSettings(BaseModel):
+    warning: float
+    acceptable: float
+    excellent: float
+
+
+class BrightnessThresholdSettings(BaseModel):
+    too_dark: float
+    acceptable_low: float
+    acceptable_high: float
+    too_bright: float
+
+
+class PoseThresholdSettings(BaseModel):
+    max_yaw: float
+    max_pitch: float
+    max_roll: float
+
+
+class SizeThresholdSettings(BaseModel):
+    min_face_width: float
+    min_face_height: float
+
+
+class VisibilityThresholdSettings(BaseModel):
+    minimum_visible_ratio: float
+
+
+class OverallThresholdSettings(BaseModel):
+    blur_weight: float
+    brightness_weight: float
+    pose_weight: float
+    visibility_weight: float
+    size_weight: float
+    minimum_acceptable_score: float
+
+    @model_validator(mode="after")
+    def validate_weights_sum_to_one(self) -> "OverallThresholdSettings":
+        """Ensure analyzer weights form a valid convex combination."""
+        total = (
+            self.blur_weight
+            + self.brightness_weight
+            + self.pose_weight
+            + self.visibility_weight
+            + self.size_weight
+        )
+        if abs(total - 1.0) > 1e-6:
+            raise ValueError(
+                f"Assessment weights must sum to 1.0, got {total:.6f}."
+            )
+        return self
+
+
+class AssessmentThresholdSettings(BaseModel):
+    blur: BlurThresholdSettings
+    brightness: BrightnessThresholdSettings
+    pose: PoseThresholdSettings
+    size: SizeThresholdSettings
+    visibility: VisibilityThresholdSettings
+    overall: OverallThresholdSettings
+
+
 class ThresholdSettings(BaseModel):
     detection: DetectionThresholdSettings = DetectionThresholdSettings()
+    assessment: AssessmentThresholdSettings
 
 
 class InputSizeSettings(BaseModel):
@@ -110,7 +173,7 @@ class Configuration:
         self,
         thresholds_path: Path = DEFAULT_THRESHOLDS_FILE,
     ) -> ThresholdSettings:
-        """Load detection thresholds from YAML."""
+        """Load detection and assessment thresholds from YAML."""
         return ThresholdSettings.model_validate(_load_yaml(thresholds_path))
 
 
